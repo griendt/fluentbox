@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import collections.abc as abc
 
+from typing_extensions import Self  # type: ignore
+
 
 class Silver:
     _items: abc.Collection
@@ -13,7 +15,7 @@ class Silver:
         else:
             self._items = [items]
 
-    def __contains__(self, obj: object) -> bool:
+    def __contains__(self, obj: object):
         return obj in self._items
 
     def __len__(self) -> int:
@@ -26,55 +28,13 @@ class Silver:
     def all(self) -> abc.Collection:
         return self._items
 
-    def each(self, callback: abc.Callable) -> Silver:
-        for item in self:
-            callback(item)
+    def each(self, callback: abc.Callable) -> Self:
+        for _, value in self.items():
+            callback(value)
 
         return self
 
-    def items(self):
-        if isinstance(self._items, abc.Mapping):
-            for key, value in self._items.items():
-                yield key, value
-
-        elif isinstance(self._items, abc.Iterable):
-            for key, value in enumerate(self._items):
-                yield key, value
-
-        else:
-            raise TypeError(f"Item type {type(self._items)} should implement Iterable")
-
-    def first(self, or_fail: bool = False):
-        for item in self:
-            return item
-
-        if or_fail:
-            raise IndexError
-
-    def first_or_fail(self):
-        return self.first(or_fail=True)
-
-    def map(self, callback: abc.Callable) -> Silver:
-        new_items = type(self._items)()
-
-        if isinstance(new_items, abc.MutableMapping):
-            for key, value in self.items():
-                new_items[key] = callback(value)
-
-        elif isinstance(new_items, abc.MutableSequence):
-            for _, value in self.items():
-                new_items.append(callback(value))
-
-        elif isinstance(new_items, abc.MutableSet):
-            for _, value in self.items():
-                new_items.add(callback(value))
-
-        else:
-            raise TypeError(f"Item type {type(self._items)} should be Mutable")
-
-        return type(self)(new_items)
-
-    def filter(self, callback: abc.Callable = None):
+    def filter(self, callback: abc.Callable = None) -> Self:
         new_items = type(self._items)()
 
         if callback is None:
@@ -97,5 +57,41 @@ class Silver:
 
         else:
             raise TypeError(f"Item type {type(self._items)} should be Mutable")
+
+        return type(self)(new_items)
+
+    def first(self, or_fail: bool = False):
+        for _, value in self.items():
+            return value
+
+        if or_fail:
+            raise IndexError
+
+    def first_or_fail(self):
+        return self.first(or_fail=True)
+
+    def items(self):
+        if isinstance(self._items, abc.Mapping):
+            for key, value in self._items.items():
+                yield key, value
+
+        elif isinstance(self._items, abc.Iterable):
+            for key, value in enumerate(self._items):
+                yield key, value
+
+    def map(self, callback: abc.Callable) -> Self:
+        new_items = type(self._items)()
+
+        if isinstance(new_items, abc.MutableMapping):
+            for key, value in self.items():
+                new_items[key] = callback(value)
+
+        elif isinstance(new_items, abc.MutableSequence):
+            for _, value in self.items():
+                new_items.append(callback(value))
+
+        elif isinstance(new_items, abc.MutableSet):
+            for _, value in self.items():
+                new_items.add(callback(value))
 
         return type(self)(new_items)
