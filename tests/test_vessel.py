@@ -1,33 +1,33 @@
 import unittest
 from collections import abc
 
-from silver import Silver
+from vessel import Vessel
 
 
-class SilverTest(unittest.TestCase):
+class VesselTest(unittest.TestCase):
 
     def test_all(self):
         for structure in ([1, 2, 3], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}):
-            self.assertEqual(Silver(structure).all(), structure)
+            self.assertEqual(Vessel(structure).all(), structure)
 
     def test_contains(self):
-        silver = Silver([1, 2, 3])
-        self.assertTrue(2 in silver)
+        vessel = Vessel([1, 2, 3])
+        self.assertTrue(2 in vessel)
 
-        silver = Silver({1, 2, 3})
-        self.assertTrue(2 in silver)
+        vessel = Vessel({1, 2, 3})
+        self.assertTrue(2 in vessel)
 
         # In the case of Mapping classes as underlying structure, __contains__ should check for keys rather than values.
-        silver = Silver({"x": 1, "y": 2, "z": 3})
-        self.assertTrue("y" in silver)
+        vessel = Vessel({"x": 1, "y": 2, "z": 3})
+        self.assertTrue("y" in vessel)
 
     def test_each(self):
         for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (2, 3, 1)):
             result = []
-            silver = Silver(structure).each(lambda item: result.append(item))
+            vessel = Vessel(structure).each(lambda item: result.append(item))
 
-            # The contents of the Silver are preserved
-            self.assertEqual(silver.all(), structure)
+            # The contents of the Vessel are preserved
+            self.assertEqual(vessel.all(), structure)
 
             # The callbacks are executed, in order where applicable. It also accepts immutable types as
             # underlying container, since no new container of that type needs to be built.
@@ -39,56 +39,56 @@ class SilverTest(unittest.TestCase):
 
     def test_filter(self):
         for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}):
-            silver = Silver(structure).filter(lambda item: item > 2)
+            vessel = Vessel(structure).filter(lambda item: item > 2)
 
-            self.assertEqual(1, len(silver))
+            self.assertEqual(1, len(vessel))
 
-            for _, value in silver.items():
+            for _, value in vessel.items():
                 self.assertEqual(3, value)
 
         # .filter will also work on immutable types.
-        self.assertEqual((1, 2, 3), Silver((1, 2, 0, 3)).filter(lambda item: item > 0).all())
+        self.assertEqual((1, 2, 3), Vessel((1, 2, 0, 3)).filter(lambda item: item > 0).all())
 
         # .filter without arguments does a truthy check.
-        self.assertEqual([6], Silver([0, False, None, 6]).filter().all())
+        self.assertEqual([6], Vessel([0, False, None, 6]).filter().all())
 
     def test_first(self):
         for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (2, 3, 1)):
-            silver = Silver(structure)
+            vessel = Vessel(structure)
 
             # When the underlying structure is Sequence
             if isinstance(structure, abc.Sequence):
-                self.assertEqual(silver.first(), 2)
+                self.assertEqual(vessel.first(), 2)
 
             else:
-                self.assertTrue(silver.first() in {1, 2, 3})
+                self.assertTrue(vessel.first() in {1, 2, 3})
 
     def test_first_or_fail(self):
         for empty_structure in ([], {}, set(), tuple()):
             with self.assertRaises(IndexError):
-                Silver(empty_structure).first_or_fail()
+                Vessel(empty_structure).first_or_fail()
 
     def test_initialize(self):
-        self.assertIsInstance(Silver([1, 2, 3]), Silver)
-        self.assertIsInstance(Silver({1, 2, 3}), Silver)
-        self.assertIsInstance(Silver({"x": 1, "y": 2, "z": 3}), Silver)
+        self.assertIsInstance(Vessel([1, 2, 3]), Vessel)
+        self.assertIsInstance(Vessel({1, 2, 3}), Vessel)
+        self.assertIsInstance(Vessel({"x": 1, "y": 2, "z": 3}), Vessel)
 
         # Despite being immutable, instantiating from a tuple is allowed.
-        self.assertIsInstance(Silver((1, 2, 3)), Silver)
+        self.assertIsInstance(Vessel((1, 2, 3)), Vessel)
 
         # Instantiating from a non-Collection is allowed; it will be wrapped in a list.
         # In particular, strings are not considered as a valid container class.
-        silver = Silver("foo")
-        self.assertIsInstance(silver, Silver)
-        self.assertTrue(1, len(silver))
-        self.assertTrue(type(Silver("foo")._items), list)
+        vessel = Vessel("foo")
+        self.assertIsInstance(vessel, Vessel)
+        self.assertTrue(1, len(vessel))
+        self.assertTrue(type(Vessel("foo")._items), list)
 
     def test_map(self):
-        self.assertEqual(Silver([2, 3, 1]).map(lambda item: item + 3).all(), [5, 6, 4])
-        self.assertEqual(Silver({2, 3, 1}).map(lambda item: item + 3).all(), {5, 6, 4})
+        self.assertEqual(Vessel([2, 3, 1]).map(lambda item: item + 3).all(), [5, 6, 4])
+        self.assertEqual(Vessel({2, 3, 1}).map(lambda item: item + 3).all(), {5, 6, 4})
 
         # .map should apply the callback to the values and preserve the keys.
-        self.assertEqual(Silver({"x": 2, "y": 3, "z": 1}).map(lambda item: item + 3).all(), {"x": 5, "y": 6, "z": 4})
+        self.assertEqual(Vessel({"x": 2, "y": 3, "z": 1}).map(lambda item: item + 3).all(), {"x": 5, "y": 6, "z": 4})
 
         # .map also attempts to work when the underlying type is immutable.
-        self.assertEqual(Silver((1, 2, 3)).map(lambda item: item * 2).all(), (2, 4, 6))
+        self.assertEqual(Vessel((1, 2, 3)).map(lambda item: item * 2).all(), (2, 4, 6))

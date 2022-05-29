@@ -4,7 +4,7 @@ import collections.abc as abc
 from typing import final
 
 
-class Silver:
+class Vessel:
     _items: abc.Collection
 
     def __init__(self, items):
@@ -36,13 +36,13 @@ class Silver:
     def all(self) -> abc.Collection:
         return self._items
 
-    def each(self, callback: abc.Callable) -> Silver:
+    def each(self, callback: abc.Callable) -> Vessel:
         for _, value in self.items():
             callback(value)
 
         return self
 
-    def filter(self, callback: abc.Callable = None) -> Silver:
+    def filter(self, callback: abc.Callable = None) -> Vessel:
         new_items = type(self._items)()
 
         if callback is None:
@@ -73,7 +73,7 @@ class Silver:
             for key, value in enumerate(self._items):
                 yield key, value
 
-    def map(self, callback: abc.Callable) -> Silver:
+    def map(self, callback: abc.Callable) -> Vessel:
         if isinstance(self._items, abc.Mapping):
             return self._new({key: callback(value) for key, value in self.items()})
 
