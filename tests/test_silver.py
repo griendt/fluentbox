@@ -46,10 +46,8 @@ class SilverTest(unittest.TestCase):
             for _, value in silver.items():
                 self.assertEqual(3, value)
 
-        # Since .filter needs to build a new underlying container instance, only Mutable types as underlying
-        # containers are accepted.
-        with self.assertRaises(TypeError):
-            Silver((1, 2, 3)).filter(lambda item: item)
+        # .filter will also work on immutable types.
+        self.assertEqual((1, 2, 3), Silver((1, 2, 0, 3)).filter(lambda item: item > 0).all())
 
         # .filter without arguments does a truthy check.
         self.assertEqual([6], Silver([0, False, None, 6]).filter().all())

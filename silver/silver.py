@@ -48,25 +48,11 @@ class Silver:
         if callback is None:
             callback = bool
 
-        if isinstance(new_items, abc.MutableMapping):
-            for key, value in self.items():
-                if callback(value):
-                    new_items[key] = value
+        if isinstance(new_items, abc.Mapping):
+            new_keys = {key for key, value in self.items() if callback(value)}
+            return self._new({key: value for key, value in self.items() if key in new_keys})
 
-        elif isinstance(new_items, abc.MutableSequence):
-            for _, value in self.items():
-                if callback(value):
-                    new_items.append(value)
-
-        elif isinstance(new_items, abc.MutableSet):
-            for _, value in self.items():
-                if callback(value):
-                    new_items.add(value)
-
-        else:
-            raise TypeError(f"Item type {type(self._items)} should be Mutable")
-
-        return type(self)(new_items)
+        return self._new([value for _, value in self.items() if callback(value)])
 
     def first(self, or_fail: bool = False):
         for _, value in self.items():
