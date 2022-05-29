@@ -14,7 +14,6 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     keywords="collection, fluent, development",
-    package_dir={"": "vessel"},
     packages=find_packages(where="vessel"),
     python_requires=">=3.9, <4",
     install_requires=[],
