@@ -92,6 +92,5 @@ class SilverTest(unittest.TestCase):
         # .map should apply the callback to the values and preserve the keys.
         self.assertEqual(Silver({"x": 2, "y": 3, "z": 1}).map(lambda item: item + 3).all(), {"x": 5, "y": 6, "z": 4})
 
-        # .map requires the underlying container type to be Mutable in order to build a return value.
-        with self.assertRaises(TypeError):
-            Silver((1, 2, 3)).map(lambda item: item)
+        # .map also attempts to work when the underlying type is immutable.
+        self.assertEqual(Silver((1, 2, 3)).map(lambda item: item * 2).all(), (2, 4, 6))

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import collections.abc as abc
-
-from typing_extensions import Self  # type: ignore
+from typing import final
 
 
 class Silver:
@@ -25,16 +24,25 @@ class Silver:
         for value in self._items:
             yield value
 
+    @final
+    def _new(self, items):
+        return type(self)(self.item_type(items))
+
+    @final
+    @property
+    def item_type(self) -> type:
+        return type(self._items)
+
     def all(self) -> abc.Collection:
         return self._items
 
-    def each(self, callback: abc.Callable) -> Self:
+    def each(self, callback: abc.Callable) -> Silver:
         for _, value in self.items():
             callback(value)
 
         return self
 
-    def filter(self, callback: abc.Callable = None) -> Self:
+    def filter(self, callback: abc.Callable = None) -> Silver:
         new_items = type(self._items)()
 
         if callback is None:
@@ -75,23 +83,12 @@ class Silver:
             for key, value in self._items.items():
                 yield key, value
 
-        elif isinstance(self._items, abc.Iterable):
+        else:
             for key, value in enumerate(self._items):
                 yield key, value
 
-    def map(self, callback: abc.Callable) -> Self:
-        new_items = type(self._items)()
+    def map(self, callback: abc.Callable) -> Silver:
+        if isinstance(self._items, abc.Mapping):
+            return self._new({key: callback(value) for key, value in self.items()})
 
-        if isinstance(new_items, abc.MutableMapping):
-            for key, value in self.items():
-                new_items[key] = callback(value)
-
-        elif isinstance(new_items, abc.MutableSequence):
-            for _, value in self.items():
-                new_items.append(callback(value))
-
-        elif isinstance(new_items, abc.MutableSet):
-            for _, value in self.items():
-                new_items.add(callback(value))
-
-        return type(self)(new_items)
+        return self._new([callback(value) for _, value in self.items()])
