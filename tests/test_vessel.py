@@ -1,7 +1,7 @@
 import unittest
 from collections import abc
 
-from src import Vessel
+from vessel import Vessel
 
 
 class VesselTest(unittest.TestCase):
