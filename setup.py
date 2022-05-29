@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="vessel",
-    version="0.1.1",
+    version="0.1.2",
     description="Fluent chainable interface for container data types",
     url="https://github.com/griendt/vessel",
     author="Alex van de Griendt",
@@ -15,7 +15,7 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     keywords="collection, fluent, development",
-    packages=find_packages(where="vessel"),
+    packages=find_packages(),
     python_requires=">=3.9, <4",
     install_requires=[],
     extras_require={
