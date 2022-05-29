@@ -6,6 +6,7 @@ setup(
     description="Fluent chainable interface for container data types",
     url="https://github.com/griendt/vessel",
     author="Alex van de Griendt",
+    author_email="alex@e-cube.nl",
     classifiers=[
         "Development Status :: 1 - Development",
         "Intended Audience :: Developers",
