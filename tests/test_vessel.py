@@ -146,8 +146,10 @@ class VesselTest(unittest.TestCase):
         for structure in ([1, 2, 3, 5], {1, 2, 3, 5}, {"x": 1, "y": 2, "z": 3, "w": 5}, (1, 2, 3, 5)):
             self.assertEqual(11, Vessel(structure).sum())
 
-        # .sum on an empty Vessel is allowed, as 0 is the neutral element for summation.
-        self.assertEqual(0, Vessel([]).sum())
+        # .sum on an empty Vessel is allowed, but since the type of elements may vary,
+        # returning 0 is not desired. For example, for lists the neutral element is the empty list.
+        # Therefore, this call should return None.
+        self.assertEqual(None, Vessel([]).sum())
 
         # .sum works with fractions.
         self.assertEqual(4, Vessel([1.5, 2.5]).sum())
@@ -158,6 +160,8 @@ class VesselTest(unittest.TestCase):
         # .sum works on complex numbers.
         self.assertEqual(complex(9, 12), Vessel([complex(2, 3), complex(3, 4), complex(4, 5)]).sum())
 
-        # .sum does not work on strings. Use .join instead.
-        with self.assertRaises(TypeError):
-            Vessel(["a", "b", "c"]).sum()
+        # .sum works on lists.
+        self.assertEqual([1, 2, 3, 4, 5, 6], Vessel([[1, 2], [3, 4], [5, 6]]).sum())
+
+        # .sum works on strings.
+        self.assertEqual("abc", Vessel(["a", "b", "c"]).sum())

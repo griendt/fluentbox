@@ -103,11 +103,14 @@ class Vessel:
         return self._new([callback(value) for _, value in self.items()])
 
     def average(self) -> numbers.Complex:
+        if not self:
+            raise ZeroDivisionError
+
         assert isinstance(the_sum := self.sum(), numbers.Complex)
         return the_sum / len(self)
 
     def sum(self) -> numbers.Complex | Literal[0]:
-        return self.reduce(operator.add, 0)
+        return self.reduce(lambda x, y: x + y)
 
     def reduce(self, fn: abc.Callable, initial_value: Any = None) -> Any:
         result = initial_value
