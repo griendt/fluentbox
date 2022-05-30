@@ -1,3 +1,4 @@
+import math
 import unittest
 from collections import abc
 
@@ -7,8 +8,24 @@ from vessel import Vessel
 class VesselTest(unittest.TestCase):
 
     def test_all(self):
-        for structure in ([1, 2, 3], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}):
+        for structure in ([1, 2, 3], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (1, 2, 3)):
             self.assertEqual(Vessel(structure).all(), structure)
+
+    def test_average(self):
+        for structure in ([1, 2, 3, 5], {1, 2, 3, 5}, {"x": 1, "y": 2, "z": 3, "w": 5}, (1, 2, 3, 5)):
+            self.assertEqual(2.75, Vessel(structure).average())
+
+        with self.assertRaises(ZeroDivisionError):
+            Vessel([]).average()
+
+        # .average works with fractions.
+        self.assertEqual(2, Vessel([1.5, 2.5]).average())
+
+        # .average works with reals.
+        self.assertEqual((math.pi + math.e)/2., Vessel([math.pi, math.e]).average())
+
+        # .average works on complex numbers.
+        self.assertEqual(complex(3, 4), Vessel([complex(2, 3), complex(3, 4), complex(4, 5)]).average())
 
     def test_contains(self):
         vessel = Vessel([1, 2, 3])
@@ -92,3 +109,36 @@ class VesselTest(unittest.TestCase):
 
         # .map also attempts to work when the underlying type is immutable.
         self.assertEqual(Vessel((1, 2, 3)).map(lambda item: item * 2).all(), (2, 4, 6))
+
+    def test_reduce(self):
+        # Reduce to the last element; no initial value is necessary.
+        self.assertEqual(3, Vessel([1, 2, 3]).reduce(lambda x, y: y))
+
+        # .reduce takes the first element as initial value if no initial value is provided.
+        self.assertEqual(6, Vessel([1, 2, 3]).reduce(lambda x, y: x + y))
+
+        # .reduce uses the initial value if provided.
+        self.assertEqual(10, Vessel([1, 2, 3]).reduce(lambda x, y: x + y, 4))
+
+        # .reduce may also effectively be a nop.
+        self.assertEqual(None, Vessel([1, 2, 3]).reduce(lambda x, y: None))
+
+    def test_sum(self):
+        for structure in ([1, 2, 3, 5], {1, 2, 3, 5}, {"x": 1, "y": 2, "z": 3, "w": 5}, (1, 2, 3, 5)):
+            self.assertEqual(11, Vessel(structure).sum())
+
+        # .sum on an empty Vessel is allowed, as 0 is the neutral element for summation.
+        self.assertEqual(0, Vessel([]).sum())
+
+        # .sum works with fractions.
+        self.assertEqual(4, Vessel([1.5, 2.5]).sum())
+
+        # .sum works with reals.
+        self.assertEqual(math.pi + math.e + 3, Vessel([math.pi, math.e, 3]).sum())
+
+        # .sum works on complex numbers.
+        self.assertEqual(complex(9, 12), Vessel([complex(2, 3), complex(3, 4), complex(4, 5)]).sum())
+
+        # .sum does not work on strings. Use .join instead.
+        with self.assertRaises(TypeError):
+            Vessel(["a", "b", "c"]).sum()

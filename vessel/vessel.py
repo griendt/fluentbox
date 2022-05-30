@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import collections.abc as abc
-from typing import final
+import numbers
+import operator
+from typing import final, Any, Literal
 
 
 class Vessel:
@@ -78,6 +80,27 @@ class Vessel:
             return self._new({key: callback(value) for key, value in self.items()})
 
         return self._new([callback(value) for _, value in self.items()])
+
+    def average(self) -> numbers.Complex:
+        assert isinstance(the_sum := self.sum(), numbers.Complex)
+        return the_sum / len(self)
+
+    def sum(self) -> numbers.Complex | Literal[0]:
+        return self.reduce(operator.add, 0)
+
+    def reduce(self, fn: abc.Callable, initial_value: Any = None) -> Any:
+        result = initial_value
+        is_first_iteration = True
+
+        for _, value in self.items():
+            if is_first_iteration and result is None:
+                result = value
+                is_first_iteration = False
+
+            else:
+                result = fn(result, value)
+
+        return result
 
 
 __all__ = ["Vessel"]
