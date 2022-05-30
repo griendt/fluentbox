@@ -27,7 +27,7 @@ class Vessel:
             yield value
 
     @final
-    def _new(self, items):
+    def _new(self, items: abc.Collection):
         return type(self)(self.item_type(items))
 
     @final
@@ -37,6 +37,27 @@ class Vessel:
 
     def all(self) -> abc.Collection:
         return self._items
+
+    def chunk(self, group_size: int) -> Vessel:
+        chunks = []
+        chunk = {}
+
+        for key, value in self.items():
+            chunk[key] = value
+
+            if len(chunk) == group_size:
+                chunks.append(chunk)
+                chunk = {}
+
+        if len(chunk) > 0:
+            chunks.append(chunk)
+
+        if not issubclass(self.item_type, abc.Mapping):
+            chunks = [self.item_type(chunk.values()) for chunk in chunks]  # type: ignore
+
+        # We do not use _new because the item type for the new Vessel is by construction list,
+        # which may differ from this instance's item type.
+        return Vessel(chunks)
 
     def each(self, callback: abc.Callable) -> Vessel:
         for _, value in self.items():

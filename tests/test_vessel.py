@@ -38,6 +38,25 @@ class VesselTest(unittest.TestCase):
         vessel = Vessel({"x": 1, "y": 2, "z": 3})
         self.assertTrue("y" in vessel)
 
+    def test_chunk(self):
+        for structure in ([1, 2, 3, 4, 5], {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}, {1, 2, 3, 4, 5}, (1, 2, 3, 4, 5)):
+            chunks = Vessel(structure).chunk(2).all()
+
+            # .chunk creates a new Vessel of type Sequence as chunks are always ordered.
+            self.assertIsInstance(chunks, abc.Sequence)
+
+            # .chunk uses up all elements, even if it causes the last chunk to not be "full".
+            self.assertEqual(3, len(chunks))
+            self.assertEqual([2, 2, 1], [len(chunk) for chunk in chunks])
+
+            # .chunk preserves the container type for each of the chunks.
+            for chunk in chunks:
+                self.assertIsInstance(chunk, type(structure))
+
+            # .chunk preserves the order when the container type is a Sequence.
+            if isinstance(structure, abc.Sequence):
+                self.assertEqual([[1, 2], [3, 4], [5]], [list(chunk) for chunk in chunks])
+
     def test_each(self):
         for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (2, 3, 1)):
             result = []
