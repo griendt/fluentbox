@@ -57,7 +57,7 @@ class Vessel:
 
         # We do not use _new because the item type for the new Vessel is by construction list,
         # which may differ from this instance's item type.
-        return Vessel(chunks)
+        return type(self)(chunks)
 
     def each(self, callback: abc.Callable) -> Vessel:
         for _, value in self.items():
