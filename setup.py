@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages  # type: ignore
 
 setup(
     name="vessel",
@@ -16,7 +16,7 @@ setup(
     ],
     keywords="collection, fluent, development",
     packages=find_packages(),
-    python_requires=">=3.9, <4",
+    python_requires=">=3.6, <4",
     install_requires=[],
     extras_require={
         "test": ["coverage"],

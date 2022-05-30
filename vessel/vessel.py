@@ -78,3 +78,6 @@ class Vessel:
             return self._new({key: callback(value) for key, value in self.items()})
 
         return self._new([callback(value) for _, value in self.items()])
+
+
+__all__ = ["Vessel"]
