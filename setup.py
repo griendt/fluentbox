@@ -16,7 +16,7 @@ setup(
     ],
     keywords="collection, fluent, development",
     packages=find_packages(),
-    python_requires=">=3.6, <4",
+    python_requires=">=3.7, <4",
     install_requires=[],
     extras_require={
         "test": ["coverage"],
