@@ -130,6 +130,34 @@ class BoxTest(unittest.TestCase):
         # .map also attempts to work when the underlying type is immutable.
         self.assertEqual(Box((1, 2, 3)).map(lambda item: item * 2).all(), (2, 4, 6))
 
+    def test_merge(self):
+
+        # .merge works on lists and Boxed lists, tuples and sets as expected.
+        self.assertEqual([1, 2, 3, 4], Box([1, 2]).merge([3, 4]).all())
+        self.assertEqual([1, 2, 3, 4], Box([1, 2]).merge(Box([3, 4])).all())
+
+        self.assertEqual((1, 2, 3, 4), Box((1, 2)).merge((3, 4)).all())
+        self.assertEqual((1, 2, 3, 4), Box((1, 2)).merge(Box((3, 4))).all())
+
+        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge({3, 4}).all())
+        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge(Box({3, 4})).all())
+
+        # .merge prefers the first type when merging mixed collection types.
+        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge((3, 4)).all())
+        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge(Box((3, 4))).all())
+        self.assertEqual((1, 2, 3, 4), Box((1, 2)).merge([3, 4]).all())
+
+        # .merge works on dictionaries as expected.
+        self.assertEqual({"a": 1, "b": 2}, Box({"a": 1}).merge({"b": 2}).all())
+
+        # .merge prefers the keys in the second argument if there is an overlapping key.
+        self.assertEqual({"a": 2}, Box({"a": 1}).merge({"a": 2}).all())
+
+        # .merge throws an error when attempting to merge a Mapping with a non-Mapping.
+        with self.assertRaises(TypeError):
+            Box({"a": 1}).merge([2, 3])
+            Box([1, 2]).merge({"a": 1})
+
     def test_reduce(self):
         # Reduce to the last element; no initial value is necessary.
         self.assertEqual(3, Box([1, 2, 3]).reduce(lambda x, y: y))

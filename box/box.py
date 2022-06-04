@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import collections.abc as abc
+import copy
+import itertools
 import numbers
 import operator
 from typing import final, Any, Literal
@@ -37,7 +39,7 @@ class Box:
             yield value
 
     @final
-    def _new(self, items: abc.Collection):
+    def _new(self, items: abc.Collection | itertools.chain):
         return type(self)(self.item_type(items))
 
     def _where(self, obj: object, key: str, operation: str | None = None, value: Any = None):
@@ -141,6 +143,22 @@ class Box:
             return self._new({key: callback(value) for key, value in self.items()})
 
         return self._new([callback(value) for _, value in self.items()])
+
+    def merge(self, other: abc.Collection | Box):
+        if isinstance(other, Box):
+            other = other._items
+
+        if isinstance(other, abc.Mapping) ^ issubclass(self.item_type, abc.Mapping):
+            raise TypeError("Cannot merge Mapping type with non-Mapping type")
+
+        result = copy.copy(self._items)
+
+        if isinstance(other, abc.Mapping):
+            assert isinstance(result, abc.Mapping)
+
+            return self._new({key: other.get(key, result.get(key)) for key in result.keys() | other.keys()})
+
+        return self._new(itertools.chain(result, other))
 
     def average(self) -> numbers.Complex:
         if not self:
