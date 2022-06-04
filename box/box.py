@@ -2,11 +2,22 @@ from __future__ import annotations
 
 import collections.abc as abc
 import numbers
+import operator
 from typing import final, Any, Literal
 
 
 class Box:
     _items: abc.Collection
+    _operator_mapping: dict[str, abc.Callable] = {
+        "=": operator.eq,
+        "==": operator.eq,
+        "!=": operator.ne,
+        "<>": operator.ne,
+        "<=": operator.le,
+        ">=": operator.ge,
+        "<": operator.lt,
+        ">": operator.gt,
+    }
 
     def __init__(self, items):
         if isinstance(items, abc.Collection):
@@ -124,6 +135,28 @@ class Box:
                 result = fn(result, value)
 
         return result
+
+    def where(self, key: str, operation: str | None = None, value: Any = None):
+        def callback(obj: object) -> bool:
+            if hasattr(obj, key):
+                obj = getattr(obj, key)
+
+            elif isinstance(obj, abc.Mapping):
+                obj = obj[key]
+
+            else:
+                raise ValueError(f"Object {obj} has no attribute or item {key}")
+
+            if operation is None:
+                # If no operator was given, we will simply check if the attribute is truthy.
+                return bool(obj)
+
+            if operation not in self._operator_mapping:
+                raise ValueError(f"Invalid operator: '{operation}'")
+
+            return self._operator_mapping[operation](obj, value)
+
+        return self.filter(lambda obj: callback(obj))
 
 
 __all__ = ["Box"]

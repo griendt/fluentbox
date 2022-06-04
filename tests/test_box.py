@@ -1,6 +1,7 @@
 import math
 import unittest
 from collections import abc
+from typing import Any
 
 from box import Box
 
@@ -165,3 +166,39 @@ class BoxTest(unittest.TestCase):
 
         # .sum works on strings.
         self.assertEqual("abc", Box(["a", "b", "c"]).sum())
+
+    def test_where(self):
+        box = Box([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+
+        # Normal operators work on dictionaries.
+        self.assertEqual(box.where("name", "==", "X").all(), [{"name": "X", "id": 1}, {"name": "X", "id": 3}])
+        self.assertEqual(box.where("name", "!=", "X").all(), [{"name": "Y", "id": 2}])
+        self.assertEqual(box.where("id", "<=", 2).all(), [{"name": "X", "id": 1}, {"name": "Y", "id": 2}])
+        self.assertEqual(box.where("id", "<", 2).all(), [{"name": "X", "id": 1}])
+        self.assertEqual(box.where("id", ">=", 2).all(), [{"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+        self.assertEqual(box.where("id", ">", 2).all(), [{"name": "X", "id": 3}])
+
+        box = Box([{"value": True}, {"value": False}, {"value": None}, {"value": 0}, {"value": []}])
+
+        # No operation defined should default to a truthy-check.
+        self.assertEqual(box.where("value").all(), [{"value": True}])
+
+        class Dummy:
+            def __init__(self, dummy_id: int, name: str, value: Any = None):
+                self.id = dummy_id
+                self.name = name
+                self.value = value
+
+        obj_1, obj_2, obj_3 = Dummy(1, "X", []), Dummy(2, "Y", {}), Dummy(3, "X", 100)
+        box = Box([obj_1, obj_2, obj_3])
+
+        # Common operators work on objects as well, using their attributes.
+        self.assertEqual(box.where("name", "==", "X").all(), [obj_1, obj_3])
+        self.assertEqual(box.where("name", "!=", "X").all(), [obj_2])
+        self.assertEqual(box.where("id", "<=", 2).all(), [obj_1, obj_2])
+        self.assertEqual(box.where("id", ">=", 2).all(), [obj_2, obj_3])
+        self.assertEqual(box.where("id", "<", 2).all(), [obj_1])
+        self.assertEqual(box.where("id", ">", 2).all(), [obj_3])
+
+        # No operation defined should default to a truthy-check on objects' attributes as well.
+        self.assertEqual(box.where("value").all(), [obj_3])
