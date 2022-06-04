@@ -225,3 +225,19 @@ class BoxTest(unittest.TestCase):
 
         # No operation defined should default to a truthy-check on objects' attributes as well.
         self.assertEqual(box.where("value").all(), [obj_3])
+
+    def test_zip(self):
+        # .zip works on lists and tuples as expected.
+        self.assertEqual([(1, 3), (2, 4)], Box([1, 2]).zip([3, 4]).all())
+        self.assertEqual(((1, 3), (2, 4)), Box((1, 2)).zip((3, 4)).all())
+
+        # .zip also accepts a Box as input, if their content type is appropriate.
+        self.assertEqual([(1, 3), (2, 4)], Box([1, 2]).zip(Box([3, 4])).all())
+        self.assertEqual(((1, 3), (2, 4)), Box((1, 2)).zip(Box((3, 4))).all())
+
+        # .zip on Mapping types is ill-defined due to potentially partially overlapping keys and random order.
+        with self.assertRaises(TypeError):
+            Box({"a": 1}).zip({"b": 2})
+
+        with self.assertRaises(TypeError):
+            Box({1, 2}).zip(Box({3, 4}))

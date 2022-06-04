@@ -169,5 +169,15 @@ class Box:
     def where(self, key: str, operation: str | None = None, value: Any = None):
         return self.filter(lambda obj: self._where(obj, key, operation, value))
 
+    def zip(self, other: abc.Sequence | Box):
+        if isinstance(other, Box):
+            if not issubclass(other.item_type, abc.Sequence):
+                raise TypeError("Cannot zip non-Sequence type")
+
+        elif not isinstance(other, abc.Sequence) or not issubclass(self.item_type, abc.Sequence):
+            raise TypeError("Cannot zip non-Sequence type")
+
+        return self._new(self.item_type(zip(self, other)))
+
 
 __all__ = ["Box"]
