@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import collections.abc as abc
 import numbers
-import operator
 from typing import final, Any, Literal
 
 
-class Vessel:
+class Box:
     _items: abc.Collection
 
     def __init__(self, items):
@@ -38,7 +37,7 @@ class Vessel:
     def all(self) -> abc.Collection:
         return self._items
 
-    def chunk(self, group_size: int) -> Vessel:
+    def chunk(self, group_size: int) -> Box:
         chunks = []
         chunk = {}
 
@@ -59,13 +58,13 @@ class Vessel:
         # which may differ from this instance's item type.
         return type(self)(chunks)
 
-    def each(self, callback: abc.Callable) -> Vessel:
+    def each(self, callback: abc.Callable) -> Box:
         for _, value in self.items():
             callback(value)
 
         return self
 
-    def filter(self, callback: abc.Callable = None) -> Vessel:
+    def filter(self, callback: abc.Callable = None) -> Box:
         new_items = type(self._items)()
 
         if callback is None:
@@ -96,7 +95,7 @@ class Vessel:
             for key, value in enumerate(self._items):
                 yield key, value
 
-    def map(self, callback: abc.Callable) -> Vessel:
+    def map(self, callback: abc.Callable) -> Box:
         if isinstance(self._items, abc.Mapping):
             return self._new({key: callback(value) for key, value in self.items()})
 
@@ -127,4 +126,4 @@ class Vessel:
         return result
 
 
-__all__ = ["Vessel"]
+__all__ = ["Box"]
