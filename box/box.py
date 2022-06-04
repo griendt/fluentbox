@@ -40,6 +40,25 @@ class Box:
     def _new(self, items: abc.Collection):
         return type(self)(self.item_type(items))
 
+    def _where(self, obj: object, key: str, operation: str | None = None, value: Any = None):
+        if hasattr(obj, key):
+            obj = getattr(obj, key)
+
+        elif isinstance(obj, abc.Mapping):
+            obj = obj[key]
+
+        else:
+            raise ValueError(f"Object {obj} has no attribute or item {key}")
+
+        if operation is None:
+            # If no operator was given, we will simply check if the attribute is truthy.
+            return bool(obj)
+
+        if operation not in self._operator_mapping:
+            raise ValueError(f"Invalid operator: '{operation}'")
+
+        return self._operator_mapping[operation](obj, value)
+
     @final
     @property
     def item_type(self) -> type:
@@ -97,6 +116,17 @@ class Box:
     def first_or_fail(self):
         return self.first(or_fail=True)
 
+    def first_where(self, key: str, operation: str | None = None, value: Any = None, /, or_fail: bool = False):
+        for _, item in self.items():
+            if self._where(item, key, operation, value):
+                return item
+
+        if or_fail:
+            raise IndexError
+
+    def first_where_or_fail(self, key: str, operation: str | None = None, value: Any = None):
+        return self.first_where(key, operation, value, or_fail=True)
+
     def items(self):
         if isinstance(self._items, abc.Mapping):
             for key, value in self._items.items():
@@ -137,26 +167,7 @@ class Box:
         return result
 
     def where(self, key: str, operation: str | None = None, value: Any = None):
-        def callback(obj: object) -> bool:
-            if hasattr(obj, key):
-                obj = getattr(obj, key)
-
-            elif isinstance(obj, abc.Mapping):
-                obj = obj[key]
-
-            else:
-                raise ValueError(f"Object {obj} has no attribute or item {key}")
-
-            if operation is None:
-                # If no operator was given, we will simply check if the attribute is truthy.
-                return bool(obj)
-
-            if operation not in self._operator_mapping:
-                raise ValueError(f"Invalid operator: '{operation}'")
-
-            return self._operator_mapping[operation](obj, value)
-
-        return self.filter(lambda obj: callback(obj))
+        return self.filter(lambda obj: self._where(obj, key, operation, value))
 
 
 __all__ = ["Box"]

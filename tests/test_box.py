@@ -167,6 +167,29 @@ class BoxTest(unittest.TestCase):
         # .sum works on strings.
         self.assertEqual("abc", Box(["a", "b", "c"]).sum())
 
+    def test_first_where(self):
+        box = Box([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+
+        # .first_where should return the first matching item.
+        self.assertEqual(1, box.first_where("name", "==", "X")["id"])
+
+        # .first_where returns None if no item matches, by default.
+        self.assertEqual(None, box.first_where("name", "==", "Z"))
+
+        # .first_where raises an error if or_fail is set to True.
+        with self.assertRaises(IndexError):
+            box.first_where("name", "==", "Z", or_fail=True)
+
+    def test_first_where_or_fail(self):
+        box = Box([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+
+        # .first_where_or_fail should return the first matching item.
+        self.assertEqual(1, box.first_where_or_fail("name", "==", "X")["id"])
+
+        # .first_where_or_fail should throw an error if no matching item is found.
+        with self.assertRaises(IndexError):
+            box.first_where_or_fail("name", "==", "Z")
+
     def test_where(self):
         box = Box([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
 
