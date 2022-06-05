@@ -58,6 +58,32 @@ class BoxTest(unittest.TestCase):
             if isinstance(structure, abc.Sequence):
                 self.assertEqual([[1, 2], [3, 4], [5]], [list(chunk) for chunk in chunks])
 
+    def test_diff(self):
+        for (first, second, expected) in [
+            # .diff works as expected on non-Mapping types.
+            ([1, 2, 3], [2, 3], [1]),
+            ({1, 2, 3}, {2, 3}, {1}),
+            ((1, 2, 3), (2, 3), (1,)),
+
+            # .diff looks at key-value pairs.
+            ({"x": 1, "y": 2, "z": 3}, {"y": 2, "z": 3}, {"x": 1}),
+            ({"x": 1, "y": 2, "z": 3}, {"a": 2, "b": 3}, {"x": 1, "y": 2, "z": 3}),
+
+            # .diff looks at values if the right-hand side is not a Mapping.
+            ({"x": 1, "y": 2, "z": 3}, [2, 3], {"x": 1}),
+            ({"x": 1, "y": 2, "z": 3}, (2, 3), {"x": 1}),
+            ({"x": 1, "y": 2, "z": 3}, {2, 3}, {"x": 1}),
+
+            # .diff looks at the values of the right-hand side if the left-hand side is not a Mapping.
+            ([1, 2, 3], {"x": 2, "y": 3}, [1]),
+            ((1, 2, 3), {"x": 2, "y": 3}, (1,)),
+            ({1, 2, 3}, {"x": 2, "y": 3}, {1}),
+
+        ]:
+            # .diff accepts both Box and non-Box arguments and gives identical results.
+            self.assertEqual(expected, Box(first).diff(second).all())
+            self.assertEqual(expected, Box(first).diff(Box(second)).all())
+
     def test_each(self):
         for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (2, 3, 1)):
             result = []

@@ -91,6 +91,22 @@ class Box:
         # which may differ from this instance's item type.
         return type(self)(chunks)
 
+    def diff(self, other: abc.Collection | Box):
+        if isinstance(other, Box):
+            other = other._items
+
+        if issubclass(self.item_type, abc.Mapping):
+            if isinstance(other, abc.Mapping):
+                return self._new({key: value for key, value in self.items() if (key, value) not in other.items()})
+
+            else:
+                return self._new({key: value for key, value in self.items() if value not in other})
+
+        if isinstance(other, abc.Mapping):
+            other = other.values()
+
+        return self._new([value for _, value in self.items() if value not in other])
+
     def each(self, callback: abc.Callable) -> Box:
         for _, value in self.items():
             callback(value)
