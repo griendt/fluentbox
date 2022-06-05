@@ -10,7 +10,8 @@ from typing import final, Any, Literal
 
 class Box:
     _items: abc.Collection
-    _operator_mapping: dict[str, abc.Callable] = {
+
+    _OPERATOR_MAPPING: dict[str, abc.Callable] = {
         "=": operator.eq,
         "==": operator.eq,
         "!=": operator.ne,
@@ -56,10 +57,10 @@ class Box:
             # If no operator was given, we will simply check if the attribute is truthy.
             return bool(obj)
 
-        if operation not in self._operator_mapping:
+        if operation not in self._OPERATOR_MAPPING:
             raise ValueError(f"Invalid operator: '{operation}'")
 
-        return self._operator_mapping[operation](obj, value)
+        return self._OPERATOR_MAPPING[operation](obj, value)
 
     @final
     @property
