@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import collections.abc as abc
-import copy
 import itertools
 import numbers
 import operator
+from abc import ABC, abstractmethod
 from typing import final, Any, Literal
 
 
-class Box:
-    _items: abc.Collection
-
+class BoxAbstract(ABC):
+    items: abc.Iterable
     _OPERATOR_MAPPING: dict[str, abc.Callable] = {
         "=": operator.eq,
         "==": operator.eq,
@@ -22,27 +21,18 @@ class Box:
         ">": operator.gt,
     }
 
-    def __init__(self, items):
-        if isinstance(items, abc.Collection):
-            self._items = items
-
-        else:
-            self._items = [items]
-
-    def __contains__(self, obj: object):
-        return obj in self._items
-
-    def __len__(self) -> int:
-        return len(self._items)
+    def __init__(self, items, *args, **kwargs):
+        if not hasattr(self, "items"):
+            self.items = items
 
     def __iter__(self):
-        for value in self._items:
-            yield value
+        yield from self.items
+
+    @abstractmethod
+    def _new(self, items) -> BoxAbstract:
+        pass
 
     @final
-    def _new(self, items: abc.Collection | itertools.chain):
-        return type(self)(self.item_type(items))
-
     def _where(self, obj: object, key: str, operation: str | None = None, value: Any = None):
         if hasattr(obj, key):
             obj = getattr(obj, key)
@@ -65,68 +55,83 @@ class Box:
     @final
     @property
     def item_type(self) -> type:
-        return type(self._items)
+        return type(self.items)
 
-    def all(self) -> abc.Collection:
-        return self._items
+    def chunk(self, chunk_size: int) -> BoxAbstract:
+        def generator():
+            chunk = []
 
-    def chunk(self, group_size: int) -> Box:
-        chunks = []
-        chunk = {}
+            for value in self:
+                chunk.append(value)
 
-        for key, value in self.items():
-            chunk[key] = value
+                if len(chunk) == chunk_size:
+                    yield chunk
 
-            if len(chunk) == group_size:
-                chunks.append(chunk)
-                chunk = {}
+        return type(self)(generator)
 
-        if len(chunk) > 0:
-            chunks.append(chunk)
-
-        if not issubclass(self.item_type, abc.Mapping):
-            chunks = [self.item_type(chunk.values()) for chunk in chunks]  # type: ignore
-
-        # We do not use _new because the item type for the new Vessel is by construction list,
-        # which may differ from this instance's item type.
-        return type(self)(chunks)
-
-    def diff(self, other: abc.Collection | Box):
-        if isinstance(other, Box):
-            other = other._items
-
-        if issubclass(self.item_type, abc.Mapping):
-            if isinstance(other, abc.Mapping):
-                return self._new({key: value for key, value in self.items() if (key, value) not in other.items()})
-
-            else:
-                return self._new({key: value for key, value in self.items() if value not in other})
-
-        if isinstance(other, abc.Mapping):
-            other = other.values()
-
-        return self._new([value for _, value in self.items() if value not in other])
-
-    def each(self, callback: abc.Callable) -> Box:
-        for _, value in self.items():
+    def each(self, callback: abc.Callable) -> BoxAbstract:
+        for value in self:
             callback(value)
 
         return self
 
-    def filter(self, callback: abc.Callable = None) -> Box:
-        new_items = type(self._items)()
+    def filter(self, callback: abc.Callable = None) -> BoxAbstract:
+        def generator(fn: abc.Callable):
+            if fn is None:
+                fn = bool
 
+            for value in self:
+                if fn(value):
+                    yield value
+
+        return type(self)(generator(callback))
+
+
+class SequenceBox(BoxAbstract, abc.Sequence):
+    items: abc.Sequence
+
+    def __init__(self, items):
+        super().__init__(items)
+
+        if isinstance(items, abc.Sequence):
+            self.items = items
+
+        else:
+            self.items = [items]
+
+    def __contains__(self, obj: object):
+        return obj in self.items
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+    def __getitem__(self, index):
+        return self.items[index]
+
+    @final
+    def _new(self, items: abc.Sequence | abc.Set | itertools.chain | abc.Generator | zip) -> SequenceBox:
+        return type(self)(self.item_type(items))
+
+    def chunk(self, chunk_size: int) -> SequenceBox:
+        return self._new(self[i: i + chunk_size] for i in range(0, len(self), chunk_size))
+
+    def diff(self, other: abc.Sequence | abc.Set):
+        return self._new(value for value in self if value not in other)
+
+    def each(self, callback: abc.Callable) -> SequenceBox:
+        for value in self:
+            callback(value)
+
+        return self
+
+    def filter(self, callback: abc.Callable = None) -> SequenceBox:
         if callback is None:
             callback = bool
 
-        if isinstance(new_items, abc.Mapping):
-            new_keys = {key for key, value in self.items() if callback(value)}
-            return self._new({key: value for key, value in self.items() if key in new_keys})
-
-        return self._new([value for _, value in self.items() if callback(value)])
+        return self._new(value for value in self if callback(value))
 
     def first(self, or_fail: bool = False):
-        for _, value in self.items():
+        for value in self:
             return value
 
         if or_fail:
@@ -136,7 +141,7 @@ class Box:
         return self.first(or_fail=True)
 
     def first_where(self, key: str, operation: str | None = None, value: Any = None, /, or_fail: bool = False):
-        for _, item in self.items():
+        for item in self:
             if self._where(item, key, operation, value):
                 return item
 
@@ -146,36 +151,15 @@ class Box:
     def first_where_or_fail(self, key: str, operation: str | None = None, value: Any = None):
         return self.first_where(key, operation, value, or_fail=True)
 
-    def items(self):
-        if isinstance(self._items, abc.Mapping):
-            for key, value in self._items.items():
-                yield key, value
+    def map(self, callback: abc.Callable) -> SequenceBox:
+        return self._new(callback(value) for value in self)
 
-        else:
-            for key, value in enumerate(self._items):
-                yield key, value
+    def merge(self, other: abc.Sequence):
+        def generator():
+            yield from self
+            yield from other
 
-    def map(self, callback: abc.Callable) -> Box:
-        if isinstance(self._items, abc.Mapping):
-            return self._new({key: callback(value) for key, value in self.items()})
-
-        return self._new([callback(value) for _, value in self.items()])
-
-    def merge(self, other: abc.Collection | Box):
-        if isinstance(other, Box):
-            other = other._items
-
-        if isinstance(other, abc.Mapping) ^ issubclass(self.item_type, abc.Mapping):
-            raise TypeError("Cannot merge Mapping type with non-Mapping type")
-
-        result = copy.copy(self._items)
-
-        if isinstance(other, abc.Mapping):
-            assert isinstance(result, abc.Mapping)
-
-            return self._new({key: other.get(key, result.get(key)) for key in result.keys() | other.keys()})
-
-        return self._new(itertools.chain(result, other))
+        return self._new(generator())
 
     def average(self) -> numbers.Complex:
         if not self:
@@ -187,32 +171,25 @@ class Box:
     def sum(self) -> numbers.Complex | Literal[0]:
         return self.reduce(lambda x, y: x + y)
 
-    def reduce(self, fn: abc.Callable, initial_value: Any = None) -> Any:
+    def reduce(self, callback: abc.Callable, initial_value: Any = None) -> Any:
         result = initial_value
         is_first_iteration = True
 
-        for _, value in self.items():
+        for value in self:
             if is_first_iteration and result is None:
                 result = value
                 is_first_iteration = False
 
             else:
-                result = fn(result, value)
+                result = callback(result, value)
 
         return result
 
     def where(self, key: str, operation: str | None = None, value: Any = None):
         return self.filter(lambda obj: self._where(obj, key, operation, value))
 
-    def zip(self, other: abc.Sequence | Box):
-        if isinstance(other, Box):
-            if not issubclass(other.item_type, abc.Sequence):
-                raise TypeError("Cannot zip non-Sequence type")
-
-        elif not isinstance(other, abc.Sequence) or not issubclass(self.item_type, abc.Sequence):
-            raise TypeError("Cannot zip non-Sequence type")
-
-        return self._new(self.item_type(zip(self, other)))
+    def zip(self, other: abc.Sequence):
+        return self._new(zip(self, other))
 
 
-__all__ = ["Box"]
+__all__ = ["SequenceBox", "BoxAbstract"]

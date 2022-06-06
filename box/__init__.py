@@ -1,3 +1,3 @@
-from .box import Box
+from .box import SequenceBox, BoxAbstract
 
-__all__ = ["Box"]
+__all__ = ["SequenceBox", "BoxAbstract"]

@@ -3,47 +3,39 @@ import unittest
 from collections import abc
 from typing import Any
 
-from box import Box
+from box import SequenceBox
 
 
-class BoxTest(unittest.TestCase):
-
+class SequenceBoxTest(unittest.TestCase):
     def test_all(self):
-        for structure in ([1, 2, 3], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (1, 2, 3)):
-            self.assertEqual(Box(structure).all(), structure)
+        for structure in ([1, 2, 3], (1, 2, 3)):
+            self.assertEqual(SequenceBox(structure).items, structure)
 
     def test_average(self):
-        for structure in ([1, 2, 3, 5], {1, 2, 3, 5}, {"x": 1, "y": 2, "z": 3, "w": 5}, (1, 2, 3, 5)):
-            self.assertEqual(2.75, Box(structure).average())
+        for structure in ([1, 2, 3, 5], (1, 2, 3, 5)):
+            self.assertEqual(2.75, SequenceBox(structure).average())
 
         with self.assertRaises(ZeroDivisionError):
-            Box([]).average()
+            SequenceBox([]).average()
 
         # .average works with fractions.
-        self.assertEqual(2, Box([1.5, 2.5]).average())
+        self.assertEqual(2, SequenceBox([1.5, 2.5]).average())
 
         # .average works with reals.
-        self.assertEqual((math.pi + math.e) / 2., Box([math.pi, math.e]).average())
+        self.assertEqual((math.pi + math.e) / 2., SequenceBox([math.pi, math.e]).average())
 
         # .average works on complex numbers.
-        self.assertEqual(complex(3, 4), Box([complex(2, 3), complex(3, 4), complex(4, 5)]).average())
+        self.assertEqual(complex(3, 4), SequenceBox([complex(2, 3), complex(3, 4), complex(4, 5)]).average())
 
     def test_contains(self):
-        box = Box([1, 2, 3])
-        self.assertTrue(2 in box)
-
-        box = Box({1, 2, 3})
-        self.assertTrue(2 in box)
-
-        # In the case of Mapping classes as underlying structure, __contains__ should check for keys rather than values.
-        box = Box({"x": 1, "y": 2, "z": 3})
-        self.assertTrue("y" in box)
+        for structure in ([1, 2, 3], (1, 2, 3)):
+            self.assertTrue(2 in SequenceBox(structure))
 
     def test_chunk(self):
-        for structure in ([1, 2, 3, 4, 5], {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}, {1, 2, 3, 4, 5}, (1, 2, 3, 4, 5)):
-            chunks = Box(structure).chunk(2).all()
+        for structure in ([1, 2, 3, 4, 5], (1, 2, 3, 4, 5)):
+            chunks = SequenceBox(structure).chunk(2).items
 
-            # .chunk creates a new Vessel of type Sequence as chunks are always ordered.
+            # .chunk creates a new Box of type Sequence as chunks are always ordered.
             self.assertIsInstance(chunks, abc.Sequence)
 
             # .chunk uses up all elements, even if it causes the last chunk to not be "full".
@@ -60,169 +52,118 @@ class BoxTest(unittest.TestCase):
 
     def test_diff(self):
         for (first, second, expected) in [
-            # .diff works as expected on non-Mapping types.
             ([1, 2, 3], [2, 3], [1]),
-            ({1, 2, 3}, {2, 3}, {1}),
             ((1, 2, 3), (2, 3), (1,)),
-
-            # .diff looks at key-value pairs.
-            ({"x": 1, "y": 2, "z": 3}, {"y": 2, "z": 3}, {"x": 1}),
-            ({"x": 1, "y": 2, "z": 3}, {"a": 2, "b": 3}, {"x": 1, "y": 2, "z": 3}),
-
-            # .diff looks at values if the right-hand side is not a Mapping.
-            ({"x": 1, "y": 2, "z": 3}, [2, 3], {"x": 1}),
-            ({"x": 1, "y": 2, "z": 3}, (2, 3), {"x": 1}),
-            ({"x": 1, "y": 2, "z": 3}, {2, 3}, {"x": 1}),
-
-            # .diff looks at the values of the right-hand side if the left-hand side is not a Mapping.
-            ([1, 2, 3], {"x": 2, "y": 3}, [1]),
-            ((1, 2, 3), {"x": 2, "y": 3}, (1,)),
-            ({1, 2, 3}, {"x": 2, "y": 3}, {1}),
-
         ]:
             # .diff accepts both Box and non-Box arguments and gives identical results.
-            self.assertEqual(expected, Box(first).diff(second).all())
-            self.assertEqual(expected, Box(first).diff(Box(second)).all())
+            self.assertEqual(expected, SequenceBox(first).diff(second).items)
+            self.assertEqual(expected, SequenceBox(first).diff(SequenceBox(second)).items)
 
     def test_each(self):
-        for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (2, 3, 1)):
+        for structure in ([2, 3, 1], (2, 3, 1)):
             result = []
-            box = Box(structure).each(lambda item: result.append(item))
+            box = SequenceBox(structure).each(lambda item: result.append(item))
 
-            # The contents of the Vessel are preserved
-            self.assertEqual(box.all(), structure)
+            # The contents of the Box are preserved.
+            self.assertEqual(box.items, structure)
 
-            # The callbacks are executed, in order where applicable. It also accepts immutable types as
+            # The callbacks are executed, in order. It also accepts immutable types as
             # underlying container, since no new container of that type needs to be built.
-            if isinstance(structure, abc.Sequence):
-                self.assertEqual(result, [2, 3, 1])
-
-            else:
-                self.assertEqual(set(result), {1, 2, 3})
+            self.assertEqual(result, [2, 3, 1])
 
     def test_filter(self):
-        for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}):
-            box = Box(structure).filter(lambda item: item > 2)
+        # .filter works on both mutable and immutable Sequence types.
+        for structure in ([2, 3, 1], (2, 3, 1)):
+            box = SequenceBox(structure).filter(lambda item: item > 2)
 
             self.assertEqual(1, len(box))
-
-            for _, value in box.items():
-                self.assertEqual(3, value)
-
-        # .filter will also work on immutable types.
-        self.assertEqual((1, 2, 3), Box((1, 2, 0, 3)).filter(lambda item: item > 0).all())
+            self.assertEqual(3, box[0])
 
         # .filter without arguments does a truthy check.
-        self.assertEqual([6], Box([0, False, None, 6]).filter().all())
+        self.assertEqual([6], SequenceBox([0, False, None, 6]).filter().items)
 
     def test_first(self):
-        for structure in ([2, 3, 1], {1, 2, 3}, {"x": 1, "y": 2, "z": 3}, (2, 3, 1)):
-            box = Box(structure)
+        for structure in ([2, 3, 1], (2, 3, 1)):
+            box = SequenceBox(structure)
 
-            # When the underlying structure is Sequence
-            if isinstance(structure, abc.Sequence):
-                self.assertEqual(box.first(), 2)
-
-            else:
-                self.assertTrue(box.first() in {1, 2, 3})
+            self.assertEqual(2, box.first())
+            # Of course, instead of .first the user may also make use of __getitem__.
+            self.assertEqual(2, box[0])
 
     def test_first_or_fail(self):
-        for empty_structure in ([], {}, set(), tuple()):
+        for empty_structure in ([], ()):
             with self.assertRaises(IndexError):
-                Box(empty_structure).first_or_fail()
+                SequenceBox(empty_structure).first_or_fail()
 
     def test_initialize(self):
-        self.assertIsInstance(Box([1, 2, 3]), Box)
-        self.assertIsInstance(Box({1, 2, 3}), Box)
-        self.assertIsInstance(Box({"x": 1, "y": 2, "z": 3}), Box)
+        self.assertIsInstance(SequenceBox([1, 2, 3]), SequenceBox)
+        self.assertIsInstance(SequenceBox({1, 2, 3}), SequenceBox)
+        self.assertIsInstance(SequenceBox({"x": 1, "y": 2, "z": 3}), SequenceBox)
 
         # Despite being immutable, instantiating from a tuple is allowed.
-        self.assertIsInstance(Box((1, 2, 3)), Box)
+        self.assertIsInstance(SequenceBox((1, 2, 3)), SequenceBox)
 
         # Instantiating from a non-Collection is allowed; it will be wrapped in a list.
         # In particular, strings are not considered as a valid container class.
-        box = Box("foo")
-        self.assertIsInstance(box, Box)
+        box = SequenceBox("foo")
+        self.assertIsInstance(box, SequenceBox)
         self.assertTrue(1, len(box))
-        self.assertTrue(type(Box("foo")._items), list)
+        self.assertTrue(type(SequenceBox("foo").items), list)
 
     def test_map(self):
-        self.assertEqual(Box([2, 3, 1]).map(lambda item: item + 3).all(), [5, 6, 4])
-        self.assertEqual(Box({2, 3, 1}).map(lambda item: item + 3).all(), {5, 6, 4})
+        self.assertEqual(SequenceBox([2, 3, 1]).map(lambda item: item + 3).items, [5, 6, 4])
 
-        # .map should apply the callback to the values and preserve the keys.
-        self.assertEqual(Box({"x": 2, "y": 3, "z": 1}).map(lambda item: item + 3).all(), {"x": 5, "y": 6, "z": 4})
-
-        # .map also attempts to work when the underlying type is immutable.
-        self.assertEqual(Box((1, 2, 3)).map(lambda item: item * 2).all(), (2, 4, 6))
+        # .map also works when the underlying type is immutable.
+        self.assertEqual(SequenceBox((1, 2, 3)).map(lambda item: item * 2).items, (2, 4, 6))
 
     def test_merge(self):
 
-        # .merge works on lists and Boxed lists, tuples and sets as expected.
-        self.assertEqual([1, 2, 3, 4], Box([1, 2]).merge([3, 4]).all())
-        self.assertEqual([1, 2, 3, 4], Box([1, 2]).merge(Box([3, 4])).all())
+        # .merge works on Boxed or non-Boxed lists and tuples as expected.
+        self.assertEqual([1, 2, 3, 4], SequenceBox([1, 2]).merge([3, 4]).items)
+        self.assertEqual([1, 2, 3, 4], SequenceBox([1, 2]).merge(SequenceBox([3, 4])).items)
 
-        self.assertEqual((1, 2, 3, 4), Box((1, 2)).merge((3, 4)).all())
-        self.assertEqual((1, 2, 3, 4), Box((1, 2)).merge(Box((3, 4))).all())
-
-        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge({3, 4}).all())
-        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge(Box({3, 4})).all())
-
-        # .merge prefers the first type when merging mixed collection types.
-        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge((3, 4)).all())
-        self.assertEqual({1, 2, 3, 4}, Box({1, 2}).merge(Box((3, 4))).all())
-        self.assertEqual((1, 2, 3, 4), Box((1, 2)).merge([3, 4]).all())
-
-        # .merge works on dictionaries as expected.
-        self.assertEqual({"a": 1, "b": 2}, Box({"a": 1}).merge({"b": 2}).all())
-
-        # .merge prefers the keys in the second argument if there is an overlapping key.
-        self.assertEqual({"a": 2}, Box({"a": 1}).merge({"a": 2}).all())
-
-        # .merge throws an error when attempting to merge a Mapping with a non-Mapping.
-        with self.assertRaises(TypeError):
-            Box({"a": 1}).merge([2, 3])
-            Box([1, 2]).merge({"a": 1})
+        self.assertEqual((1, 2, 3, 4), SequenceBox((1, 2)).merge((3, 4)).items)
+        self.assertEqual((1, 2, 3, 4), SequenceBox((1, 2)).merge(SequenceBox((3, 4))).items)
 
     def test_reduce(self):
         # Reduce to the last element; no initial value is necessary.
-        self.assertEqual(3, Box([1, 2, 3]).reduce(lambda x, y: y))
+        self.assertEqual(3, SequenceBox([1, 2, 3]).reduce(lambda x, y: y))
 
         # .reduce takes the first element as initial value if no initial value is provided.
-        self.assertEqual(6, Box([1, 2, 3]).reduce(lambda x, y: x + y))
+        self.assertEqual(6, SequenceBox([1, 2, 3]).reduce(lambda x, y: x + y))
 
         # .reduce uses the initial value if provided.
-        self.assertEqual(10, Box([1, 2, 3]).reduce(lambda x, y: x + y, 4))
+        self.assertEqual(10, SequenceBox([1, 2, 3]).reduce(lambda x, y: x + y, 4))
 
         # .reduce may also effectively be a nop.
-        self.assertEqual(None, Box([1, 2, 3]).reduce(lambda x, y: None))
+        self.assertEqual(None, SequenceBox([1, 2, 3]).reduce(lambda x, y: None))
 
     def test_sum(self):
-        for structure in ([1, 2, 3, 5], {1, 2, 3, 5}, {"x": 1, "y": 2, "z": 3, "w": 5}, (1, 2, 3, 5)):
-            self.assertEqual(11, Box(structure).sum())
+        for structure in ([1, 2, 3, 5], (1, 2, 3, 5)):
+            self.assertEqual(11, SequenceBox(structure).sum())
 
-        # .sum on an empty Vessel is allowed, but since the type of elements may vary,
+        # .sum on an empty Box is allowed, but since the type of elements may vary,
         # returning 0 is not desired. For example, for lists the neutral element is the empty list.
         # Therefore, this call should return None.
-        self.assertEqual(None, Box([]).sum())
+        self.assertEqual(None, SequenceBox([]).sum())
 
         # .sum works with fractions.
-        self.assertEqual(4, Box([1.5, 2.5]).sum())
+        self.assertEqual(4, SequenceBox([1.5, 2.5]).sum())
 
         # .sum works with reals.
-        self.assertEqual(math.pi + math.e + 3, Box([math.pi, math.e, 3]).sum())
+        self.assertEqual(math.pi + math.e + 3, SequenceBox([math.pi, math.e, 3]).sum())
 
         # .sum works on complex numbers.
-        self.assertEqual(complex(9, 12), Box([complex(2, 3), complex(3, 4), complex(4, 5)]).sum())
+        self.assertEqual(complex(9, 12), SequenceBox([complex(2, 3), complex(3, 4), complex(4, 5)]).sum())
 
         # .sum works on lists.
-        self.assertEqual([1, 2, 3, 4, 5, 6], Box([[1, 2], [3, 4], [5, 6]]).sum())
+        self.assertEqual([1, 2, 3, 4, 5, 6], SequenceBox([[1, 2], [3, 4], [5, 6]]).sum())
 
         # .sum works on strings.
-        self.assertEqual("abc", Box(["a", "b", "c"]).sum())
+        self.assertEqual("abc", SequenceBox(["a", "b", "c"]).sum())
 
     def test_first_where(self):
-        box = Box([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+        box = SequenceBox([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
 
         # .first_where should return the first matching item.
         self.assertEqual(1, box.first_where("name", "==", "X")["id"])
@@ -235,7 +176,7 @@ class BoxTest(unittest.TestCase):
             box.first_where("name", "==", "Z", or_fail=True)
 
     def test_first_where_or_fail(self):
-        box = Box([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+        box = SequenceBox([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
 
         # .first_where_or_fail should return the first matching item.
         self.assertEqual(1, box.first_where_or_fail("name", "==", "X")["id"])
@@ -245,20 +186,20 @@ class BoxTest(unittest.TestCase):
             box.first_where_or_fail("name", "==", "Z")
 
     def test_where(self):
-        box = Box([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+        box = SequenceBox([{"name": "X", "id": 1}, {"name": "Y", "id": 2}, {"name": "X", "id": 3}])
 
         # Normal operators work on dictionaries.
-        self.assertEqual(box.where("name", "==", "X").all(), [{"name": "X", "id": 1}, {"name": "X", "id": 3}])
-        self.assertEqual(box.where("name", "!=", "X").all(), [{"name": "Y", "id": 2}])
-        self.assertEqual(box.where("id", "<=", 2).all(), [{"name": "X", "id": 1}, {"name": "Y", "id": 2}])
-        self.assertEqual(box.where("id", "<", 2).all(), [{"name": "X", "id": 1}])
-        self.assertEqual(box.where("id", ">=", 2).all(), [{"name": "Y", "id": 2}, {"name": "X", "id": 3}])
-        self.assertEqual(box.where("id", ">", 2).all(), [{"name": "X", "id": 3}])
+        self.assertEqual(box.where("name", "==", "X").items, [{"name": "X", "id": 1}, {"name": "X", "id": 3}])
+        self.assertEqual(box.where("name", "!=", "X").items, [{"name": "Y", "id": 2}])
+        self.assertEqual(box.where("id", "<=", 2).items, [{"name": "X", "id": 1}, {"name": "Y", "id": 2}])
+        self.assertEqual(box.where("id", "<", 2).items, [{"name": "X", "id": 1}])
+        self.assertEqual(box.where("id", ">=", 2).items, [{"name": "Y", "id": 2}, {"name": "X", "id": 3}])
+        self.assertEqual(box.where("id", ">", 2).items, [{"name": "X", "id": 3}])
 
-        box = Box([{"value": True}, {"value": False}, {"value": None}, {"value": 0}, {"value": []}])
+        box = SequenceBox([{"value": True}, {"value": False}, {"value": None}, {"value": 0}, {"value": []}])
 
         # No operation defined should default to a truthy-check.
-        self.assertEqual(box.where("value").all(), [{"value": True}])
+        self.assertEqual(box.where("value").items, [{"value": True}])
 
         class Dummy:
             def __init__(self, dummy_id: int, name: str, value: Any = None):
@@ -267,31 +208,24 @@ class BoxTest(unittest.TestCase):
                 self.value = value
 
         obj_1, obj_2, obj_3 = Dummy(1, "X", []), Dummy(2, "Y", {}), Dummy(3, "X", 100)
-        box = Box([obj_1, obj_2, obj_3])
+        box = SequenceBox([obj_1, obj_2, obj_3])
 
         # Common operators work on objects as well, using their attributes.
-        self.assertEqual(box.where("name", "==", "X").all(), [obj_1, obj_3])
-        self.assertEqual(box.where("name", "!=", "X").all(), [obj_2])
-        self.assertEqual(box.where("id", "<=", 2).all(), [obj_1, obj_2])
-        self.assertEqual(box.where("id", ">=", 2).all(), [obj_2, obj_3])
-        self.assertEqual(box.where("id", "<", 2).all(), [obj_1])
-        self.assertEqual(box.where("id", ">", 2).all(), [obj_3])
+        self.assertEqual(box.where("name", "==", "X").items, [obj_1, obj_3])
+        self.assertEqual(box.where("name", "!=", "X").items, [obj_2])
+        self.assertEqual(box.where("id", "<=", 2).items, [obj_1, obj_2])
+        self.assertEqual(box.where("id", ">=", 2).items, [obj_2, obj_3])
+        self.assertEqual(box.where("id", "<", 2).items, [obj_1])
+        self.assertEqual(box.where("id", ">", 2).items, [obj_3])
 
         # No operation defined should default to a truthy-check on objects' attributes as well.
-        self.assertEqual(box.where("value").all(), [obj_3])
+        self.assertEqual(box.where("value").items, [obj_3])
 
     def test_zip(self):
         # .zip works on lists and tuples as expected.
-        self.assertEqual([(1, 3), (2, 4)], Box([1, 2]).zip([3, 4]).all())
-        self.assertEqual(((1, 3), (2, 4)), Box((1, 2)).zip((3, 4)).all())
+        self.assertEqual([(1, 3), (2, 4)], SequenceBox([1, 2]).zip([3, 4]).items)
+        self.assertEqual(((1, 3), (2, 4)), SequenceBox((1, 2)).zip((3, 4)).items)
 
         # .zip also accepts a Box as input, if their content type is appropriate.
-        self.assertEqual([(1, 3), (2, 4)], Box([1, 2]).zip(Box([3, 4])).all())
-        self.assertEqual(((1, 3), (2, 4)), Box((1, 2)).zip(Box((3, 4))).all())
-
-        # .zip on Mapping types is ill-defined due to potentially partially overlapping keys and random order.
-        with self.assertRaises(TypeError):
-            Box({"a": 1}).zip({"b": 2})
-
-        with self.assertRaises(TypeError):
-            Box({1, 2}).zip(Box({3, 4}))
+        self.assertEqual([(1, 3), (2, 4)], SequenceBox([1, 2]).zip(SequenceBox([3, 4])).items)
+        self.assertEqual(((1, 3), (2, 4)), SequenceBox((1, 2)).zip(SequenceBox((3, 4))).items)
