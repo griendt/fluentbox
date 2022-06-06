@@ -163,13 +163,17 @@ class SequenceBox(BoxAbstract, abc.Sequence):
     def _new(self, items: abc.Iterable) -> SequenceBox:
         return type(self)(self.item_type(items))
 
-    def chunk(self, chunk_size: int) -> SequenceBox:
-        # Using slices is more efficient than using the for-loop implementation in `BoxAbstract`.
-        return self._new(self[i: i + chunk_size] for i in range(0, len(self), chunk_size))
-
     def average(self) -> Any:
+        # TODO: This method only requires that the items be `abc.Sized`.
         if not len(self):
             raise ZeroDivisionError
 
         assert isinstance(the_sum := self.sum(), numbers.Complex)
         return the_sum / len(self)
+
+    def chunk(self, chunk_size: int) -> SequenceBox:
+        # Using slices is more efficient than using the for-loop implementation in `BoxAbstract`.
+        return self._new(self[i: i + chunk_size] for i in range(0, len(self), chunk_size))
+
+    def reverse(self) -> SequenceBox:
+        return self._new(reversed(self))

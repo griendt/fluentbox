@@ -139,6 +139,10 @@ class SequenceBoxTest(unittest.TestCase):
         # .reduce may also effectively be a nop.
         self.assertEqual(None, SequenceBox([1, 2, 3]).reduce(lambda x, y: None))
 
+    def test_reverse(self) -> None:
+        self.assertEqual([3, 2, 1], SequenceBox([1, 2, 3]).reverse().items)
+        self.assertEqual((3, 2, 1), SequenceBox((1, 2, 3)).reverse().items)
+
     def test_sum(self) -> None:
         for structure in ([1, 2, 3, 5], (1, 2, 3, 5)):
             self.assertEqual(11, SequenceBox(structure).sum())
