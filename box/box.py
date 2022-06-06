@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import collections.abc as abc
-import itertools
 import numbers
 import operator
-import typing
 from abc import ABC, abstractmethod
-from typing import final, Any, Literal
+from typing import final, Any
 
 
 class BoxAbstract(ABC, abc.Iterable):
@@ -113,7 +111,8 @@ class BoxAbstract(ABC, abc.Iterable):
         return self.reduce(lambda x, y: x + y)
 
     @abstractmethod
-    def _new(self, items: abc.Iterable) -> BoxAbstract: ...
+    def _new(self, items: abc.Iterable) -> BoxAbstract:
+        ...
 
     @final
     def _where(self, obj: object, key: str, operation: str | None = None, value: Any = None) -> bool:
