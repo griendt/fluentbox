@@ -13,7 +13,7 @@ class SizedIterable(abc.Sized, abc.Iterable, typing.Protocol):
 
 
 class Box(abc.Iterable):
-    _the_items: abc.Iterable
+    _items: abc.Iterable
     _OPERATOR_MAPPING: dict[str, abc.Callable[[Any, Any], bool]] = {
         "=": operator.eq,
         "==": operator.eq,
@@ -26,22 +26,22 @@ class Box(abc.Iterable):
     }
 
     def __init__(self, items: abc.Iterable):
-        if not hasattr(self, "_the_items"):
-            self._the_items = items
+        if not hasattr(self, "_items"):
+            self._items = items
 
     def __bool__(self) -> bool:
-        return bool(self._the_items)
+        return bool(self._items)
 
     def __contains__(self, obj: object) -> bool:
-        return obj in self._the_items
+        return obj in self._items
 
     def __iter__(self) -> abc.Generator:
-        yield from self._the_items
+        yield from self._items
 
     @final
     @property
     def item_type(self) -> type:
-        return type(self._the_items)
+        return type(self._items)
 
     def chunk(self, chunk_size: int) -> Box:
         def generator() -> abc.Generator:
@@ -149,10 +149,10 @@ class Box(abc.Iterable):
 
 
 class SizedBox(abc.Sized, Box):
-    _the_items: SizedIterable
+    _items: SizedIterable
 
     def __len__(self) -> int:
-        return len(self._the_items)
+        return len(self._items)
 
     def average(self) -> Any:
         if not self:
@@ -163,7 +163,7 @@ class SizedBox(abc.Sized, Box):
 
 
 class SequenceBox(SizedBox, abc.Sequence):
-    _the_items: abc.Sequence
+    _items: abc.Sequence
 
     def __init__(self, items: Any):
         super().__init__(items)
@@ -189,27 +189,27 @@ class SequenceBox(SizedBox, abc.Sequence):
 
 
 class MappingBox(SizedBox, abc.Mapping):
-    _the_items: abc.Mapping
+    _items: abc.Mapping
 
     def __getitem__(self, key: abc.Hashable) -> Any:
-        return self._the_items[key]
+        return self._items[key]
 
 
 class MutableMappingBox(MappingBox, abc.MutableMapping):
-    _the_items: abc.MutableMapping
+    _items: abc.MutableMapping
 
     def __setitem__(self, key: abc.Hashable, value: Any) -> None:
-        self._the_items[key] = value
+        self._items[key] = value
 
     def __delitem__(self, key: abc.Hashable) -> None:
-        del self._the_items[key]
+        del self._items[key]
 
 
 class MutableSetBox(SizedBox, abc.MutableSet):
-    _the_items: abc.MutableSet
+    _items: abc.MutableSet
 
     def add(self, value: Any) -> None:
-        self._the_items.add(value)
+        self._items.add(value)
 
     def discard(self, value: Any) -> None:
-        self._the_items.discard(value)
+        self._items.discard(value)
