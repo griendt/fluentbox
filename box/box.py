@@ -3,12 +3,17 @@ from __future__ import annotations
 import collections.abc as abc
 import numbers
 import operator
-from abc import ABC, abstractmethod
-from typing import final, Any
+import typing
+from typing import final, Any, cast
 
 
-class BoxAbstract(ABC, abc.Iterable):
-    items: abc.Iterable
+class SizedIterable(abc.Sized, abc.Iterable, typing.Protocol):
+    """Intersection type for `abc.Sized` and `abc.Iterable`."""
+    pass
+
+
+class Box(abc.Iterable):
+    _the_items: abc.Iterable
     _OPERATOR_MAPPING: dict[str, abc.Callable[[Any, Any], bool]] = {
         "=": operator.eq,
         "==": operator.eq,
@@ -21,21 +26,24 @@ class BoxAbstract(ABC, abc.Iterable):
     }
 
     def __init__(self, items: abc.Iterable):
-        if not hasattr(self, "items"):
-            self.items = items
+        if not hasattr(self, "_the_items"):
+            self._the_items = items
+
+    def __bool__(self) -> bool:
+        return bool(self._the_items)
 
     def __contains__(self, obj: object) -> bool:
-        return obj in self.items
+        return obj in self._the_items
 
     def __iter__(self) -> abc.Generator:
-        yield from self.items
+        yield from self._the_items
 
     @final
     @property
     def item_type(self) -> type:
-        return type(self.items)
+        return type(self._the_items)
 
-    def chunk(self, chunk_size: int) -> BoxAbstract:
+    def chunk(self, chunk_size: int) -> Box:
         def generator() -> abc.Generator:
             chunk = []
 
@@ -47,16 +55,16 @@ class BoxAbstract(ABC, abc.Iterable):
 
         return type(self)(generator())
 
-    def diff(self, other: abc.Iterable) -> BoxAbstract:
+    def diff(self, other: abc.Iterable) -> Box:
         return self._new(value for value in self if value not in other)
 
-    def each(self, callback: abc.Callable) -> BoxAbstract:
+    def each(self, callback: abc.Callable) -> Box:
         for value in self:
             callback(value)
 
         return self
 
-    def filter(self, callback: abc.Callable | None = None) -> BoxAbstract:
+    def filter(self, callback: abc.Callable | None = None) -> Box:
         if callback is None:
             callback = bool
 
@@ -83,10 +91,10 @@ class BoxAbstract(ABC, abc.Iterable):
     def first_where_or_fail(self, key: str, operation: str | None = None, value: Any = None) -> Any:
         return self.first_where(key, operation, value, or_fail=True)
 
-    def map(self, callback: abc.Callable) -> BoxAbstract:
+    def map(self, callback: abc.Callable) -> Box:
         return self._new(callback(value) for value in self)
 
-    def merge(self, other: abc.Iterable) -> BoxAbstract:
+    def merge(self, other: abc.Iterable) -> Box:
         def generator() -> abc.Generator:
             yield from self
             yield from other
@@ -110,9 +118,8 @@ class BoxAbstract(ABC, abc.Iterable):
     def sum(self) -> Any:
         return self.reduce(lambda x, y: x + y)
 
-    @abstractmethod
-    def _new(self, items: abc.Iterable) -> BoxAbstract:
-        ...
+    def _new(self, items: abc.Iterable) -> Box:
+        return type(self)(self.item_type(items))
 
     @final
     def _where(self, obj: object, key: str, operation: str | None = None, value: Any = None) -> bool:
@@ -134,15 +141,29 @@ class BoxAbstract(ABC, abc.Iterable):
 
         return self._OPERATOR_MAPPING[operation](obj, value)
 
-    def where(self, key: str, operation: str | None = None, value: Any = None) -> BoxAbstract:
+    def where(self, key: str, operation: str | None = None, value: Any = None) -> Box:
         return self.filter(lambda obj: self._where(obj, key, operation, value))
 
-    def zip(self, other: abc.Iterable) -> BoxAbstract:
+    def zip(self, other: abc.Iterable) -> Box:
         return self._new(zip(self, other))
 
 
-class SequenceBox(BoxAbstract, abc.Sequence):
-    items: abc.Sequence
+class SizedBox(abc.Sized, Box):
+    _the_items: SizedIterable
+
+    def __len__(self) -> int:
+        return len(self._the_items)
+
+    def average(self) -> Any:
+        if not self:
+            raise ZeroDivisionError
+
+        assert isinstance(the_sum := self.sum(), numbers.Complex)
+        return the_sum / len(self)
+
+
+class SequenceBox(SizedBox, abc.Sequence):
+    _the_items: abc.Sequence
 
     def __init__(self, items: Any):
         super().__init__(items)
@@ -153,27 +174,42 @@ class SequenceBox(BoxAbstract, abc.Sequence):
         else:
             self.items = [items]
 
-    def __len__(self) -> int:
-        return len(self.items)
+    def _new(self, items: abc.Iterable) -> SequenceBox:
+        return cast(SequenceBox, super()._new(items))
 
     def __getitem__(self, index: int | slice) -> Any:
         return self.items[index]
 
-    @final
-    def _new(self, items: abc.Iterable) -> SequenceBox:
-        return type(self)(self.item_type(items))
-
-    def average(self) -> Any:
-        # TODO: This method only requires that the items be `abc.Sized`.
-        if not len(self):
-            raise ZeroDivisionError
-
-        assert isinstance(the_sum := self.sum(), numbers.Complex)
-        return the_sum / len(self)
-
     def chunk(self, chunk_size: int) -> SequenceBox:
-        # Using slices is more efficient than using the for-loop implementation in `BoxAbstract`.
+        # Using slices is more efficient than using the for-loop implementation in `Box`.
         return self._new(self[i: i + chunk_size] for i in range(0, len(self), chunk_size))
 
     def reverse(self) -> SequenceBox:
         return self._new(reversed(self))
+
+
+class MappingBox(SizedBox, abc.Mapping):
+    _the_items: abc.Mapping
+
+    def __getitem__(self, key: abc.Hashable) -> Any:
+        return self._the_items[key]
+
+
+class MutableMappingBox(MappingBox, abc.MutableMapping):
+    _the_items: abc.MutableMapping
+
+    def __setitem__(self, key: abc.Hashable, value: Any) -> None:
+        self._the_items[key] = value
+
+    def __delitem__(self, key: abc.Hashable) -> None:
+        del self._the_items[key]
+
+
+class MutableSetBox(SizedBox, abc.MutableSet):
+    _the_items: abc.MutableSet
+
+    def add(self, value: Any) -> None:
+        self._the_items.add(value)
+
+    def discard(self, value: Any) -> None:
+        self._the_items.discard(value)

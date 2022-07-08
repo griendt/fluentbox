@@ -1,3 +1,15 @@
-from .box import SequenceBox, BoxAbstract
+from .box import (
+    Box,
+    MappingBox,
+    MutableMappingBox,
+    MutableSetBox,
+    SequenceBox,
+)
 
-__all__ = ["SequenceBox", "BoxAbstract"]
+__all__ = [
+    "Box",
+    "MappingBox",
+    "MutableMappingBox",
+    "MutableSetBox",
+    "SequenceBox",
+]

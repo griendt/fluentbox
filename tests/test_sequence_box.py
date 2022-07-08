@@ -3,7 +3,7 @@ import unittest
 from collections import abc
 from typing import Any
 
-from box import SequenceBox  # type: ignore
+from box import MappingBox, SequenceBox, MutableMappingBox, MutableSetBox  # type: ignore
 
 
 class SequenceBoxTest(unittest.TestCase):
@@ -234,3 +234,50 @@ class SequenceBoxTest(unittest.TestCase):
         # .zip also accepts a Box as input, if their content type is appropriate.
         self.assertEqual([(1, 3), (2, 4)], SequenceBox([1, 2]).zip(SequenceBox([3, 4])).items)
         self.assertEqual(((1, 3), (2, 4)), SequenceBox((1, 2)).zip(SequenceBox((3, 4))).items)
+
+
+class MappingBoxTest(unittest.TestCase):
+
+    def test_getitem(self) -> None:
+        self.assertEqual("bar", MappingBox({"foo": "bar"})["foo"])
+
+        with self.assertRaises(KeyError):
+            _ = MappingBox({"foo": "bar"})["baz"]
+
+
+class MutableMappingBoxTest(unittest.TestCase):
+
+    def test_setitem(self) -> None:
+        box = MutableMappingBox({"foo": "bar"})
+        box["baz"] = 3
+
+        self.assertEqual(box["foo"], "bar")
+        self.assertEqual(box["baz"], 3)
+
+    def test_delitem(self) -> None:
+        box = MutableMappingBox({"foo": "bar"})
+        del box["foo"]
+
+        self.assertEqual(0, len(box))
+
+
+class MutableSetBoxTest(unittest.TestCase):
+
+    def test_add(self) -> None:
+        box = MutableSetBox({1, 2, 3})
+        box.add(4)
+
+        self.assertEqual(4, len(box))
+        self.assertTrue(4 in box)
+
+        box.add(2)
+
+        self.assertEqual(4, len(box))
+
+    def test_discard(self) -> None:
+        box = MutableSetBox({1, 2, 3})
+        box.discard(2)
+
+        self.assertEqual(2, len(box))
+        self.assertTrue(1 in box)
+        self.assertTrue(3 in box)
