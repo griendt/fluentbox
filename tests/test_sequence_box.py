@@ -126,6 +126,29 @@ class SequenceBoxTest(unittest.TestCase):
         self.assertEqual((1, 2, 3, 4), SequenceBox((1, 2)).merge((3, 4)).items)
         self.assertEqual((1, 2, 3, 4), SequenceBox((1, 2)).merge(SequenceBox((3, 4))).items)
 
+    def test_pluck(self) -> None:
+        # .pluck can fetch keys from mapping objects.
+        self.assertEqual([1, 2, 3, 4], SequenceBox([{"x": 1}, {"x": 2}, {"x": 3}, {"x": 4}]).pluck("x").items)
+
+        # .pluck returns the default argument (default: None) if a key does not exist.
+        self.assertEqual([None], SequenceBox([{"x": 1, "y": 2}]).pluck("z").items)
+
+        # .pluck accepts a default argument and will return that if the key does not exist.
+        self.assertEqual([2], SequenceBox([{"x": 1, "y": 2}]).pluck("y", default=3).items)
+        self.assertEqual([3], SequenceBox([{"x": 1, "y": 2}]).pluck("z", default=3).items)
+
+        # .pluck will raise a KeyError if specified to do so, when trying to pluck a non-existing key.
+        with self.assertRaises(KeyError):
+            SequenceBox([{"x": 1, "y": 2}]).pluck("z", raise_on_error=True)
+
+        # .pluck also works on objects that have the given key as an attribute.
+        class Foo:
+            def __init__(self, x: int = 3, y: int = 4):
+                self.x = x
+                self.y = y
+
+        self.assertEqual([1, 2], SequenceBox([Foo(x=1, y=3), Foo(x=2, y=2)]).pluck("x").items)
+
     def test_reduce(self) -> None:
         # Reduce to the last element; no initial value is necessary.
         self.assertEqual(3, SequenceBox([1, 2, 3]).reduce(lambda x, y: y))
