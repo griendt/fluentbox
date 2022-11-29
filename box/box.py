@@ -3,11 +3,11 @@ from __future__ import annotations
 import collections.abc as abc
 import numbers
 import operator
-from abc import ABC
-from typing import final, Any, cast
+from typing import final, Any, cast, Protocol, runtime_checkable
 
 
-class SizedIterable(abc.Sized, abc.Iterable, ABC):
+@runtime_checkable
+class SizedIterable(abc.Sized, abc.Iterable, Protocol):
     """Intersection type for `abc.Sized` and `abc.Iterable`."""
     pass
 
@@ -230,7 +230,7 @@ class MutableSetBox(SizedBox, abc.MutableSet):
         self._items.discard(value)
 
 
-def box(items: abc.Iterable | None = None):
+def box(items: abc.Iterable | None = None) -> Box:
     if items is None:
         return box([])
 

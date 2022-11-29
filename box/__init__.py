@@ -4,6 +4,7 @@ from .box import (
     MutableMappingBox,
     MutableSetBox,
     SequenceBox,
+    box
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "MutableMappingBox",
     "MutableSetBox",
     "SequenceBox",
+    "box",
 ]
