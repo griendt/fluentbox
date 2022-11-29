@@ -43,6 +43,9 @@ class Box(abc.Iterable):
     def item_type(self) -> type:
         return type(self._items)
 
+    def all(self) -> abc.Iterable:
+        return self._items
+
     def chunk(self, chunk_size: int) -> Box:
         def generator() -> abc.Generator:
             chunk = []
@@ -166,6 +169,9 @@ class Box(abc.Iterable):
 class SizedBox(abc.Sized, Box):
     _items: SizedIterable
 
+    def all(self) -> SizedIterable:
+        return self._items
+
     def __len__(self) -> int:
         return len(self._items)
 
@@ -195,6 +201,9 @@ class SequenceBox(SizedBox, abc.Sequence):
     def __getitem__(self, index: int | slice) -> Any:
         return self.items[index]
 
+    def all(self) -> abc.Sequence:
+        return self._items
+
     def chunk(self, chunk_size: int) -> SequenceBox:
         # Using slices is more efficient than using the for-loop implementation in `Box`.
         return self._new(self[i: i + chunk_size] for i in range(0, len(self), chunk_size))
@@ -209,6 +218,9 @@ class MappingBox(SizedBox, abc.Mapping):
     def __getitem__(self, key: abc.Hashable) -> Any:
         return self._items[key]
 
+    def all(self) -> abc.Mapping:
+        return self._items
+
 
 class MutableMappingBox(MappingBox, abc.MutableMapping):
     _items: abc.MutableMapping
@@ -219,9 +231,15 @@ class MutableMappingBox(MappingBox, abc.MutableMapping):
     def __delitem__(self, key: abc.Hashable) -> None:
         del self._items[key]
 
+    def all(self) -> abc.MutableMapping:
+        return self._items
+
 
 class MutableSetBox(SizedBox, abc.MutableSet):
     _items: abc.MutableSet
+
+    def all(self) -> abc.MutableSet:
+        return self._items
 
     def add(self, value: Any) -> None:
         self._items.add(value)
