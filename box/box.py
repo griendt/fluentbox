@@ -3,11 +3,11 @@ from __future__ import annotations
 import collections.abc as abc
 import numbers
 import operator
-import typing
+from abc import ABC
 from typing import final, Any, cast
 
 
-class SizedIterable(abc.Sized, abc.Iterable, typing.Protocol):
+class SizedIterable(abc.Sized, abc.Iterable, ABC):
     """Intersection type for `abc.Sized` and `abc.Iterable`."""
     pass
 
@@ -228,3 +228,28 @@ class MutableSetBox(SizedBox, abc.MutableSet):
 
     def discard(self, value: Any) -> None:
         self._items.discard(value)
+
+
+def box(items: abc.Iterable | None = None):
+    if items is None:
+        return box([])
+
+    if not isinstance(items, abc.Iterable):
+        return box([items])
+
+    if isinstance(items, abc.MutableSet):
+        return MutableSetBox(items)
+
+    if isinstance(items, abc.MutableMapping):
+        return MutableMappingBox(items)
+
+    if isinstance(items, abc.Mapping):
+        return MappingBox(items)
+
+    if isinstance(items, abc.Sequence):
+        return SequenceBox(items)
+
+    if isinstance(items, SizedIterable):
+        return SizedBox(items)
+
+    raise TypeError("Cannot create Box instance from item type {}".format(type(items)))
