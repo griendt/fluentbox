@@ -28,4 +28,4 @@ jobs:
         python -m unittest discover
     - name: Check mypy compliance
       run: |
-        python -m mypy box tests
+        python -m mypy src
