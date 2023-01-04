@@ -3,7 +3,7 @@ import unittest
 from collections import abc
 from typing import Any
 
-from box import MappingBox, SequenceBox, MutableMappingBox, MutableSetBox  # type: ignore
+from src.fluentbox import MappingBox, SequenceBox, MutableMappingBox, MutableSetBox  # type: ignore
 
 
 class SequenceBoxTest(unittest.TestCase):
