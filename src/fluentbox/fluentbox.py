@@ -105,19 +105,7 @@ class Box(abc.Iterable):
         return self._new(generator())
 
     def pluck(self, key: str, *, default: Any = None, raise_on_error: bool = False) -> Box:
-        def get_attribute_or_key(obj: object) -> Any:
-            if hasattr(obj, key):
-                return getattr(obj, key)
-
-            elif isinstance(obj, abc.Mapping) and key in obj.keys():
-                return obj[key]
-
-            if raise_on_error:
-                raise KeyError("Object of type {} does not have key or attribute {}".format(type(obj), key))
-
-            return default
-
-        return self.map(lambda item: get_attribute_or_key(item))
+        return self.map(lambda item: self.__get_attribute_or_key(item, key, raise_on_error=raise_on_error, default=default))
 
     def reduce(self, callback: abc.Callable, initial_value: Any = None) -> Any:
         result = initial_value
@@ -164,6 +152,19 @@ class Box(abc.Iterable):
 
     def zip(self, other: abc.Iterable) -> Box:
         return self._new(zip(self, other))
+
+    @staticmethod
+    def __get_attribute_or_key(obj: object, key: str, *, raise_on_error: bool = False, default: Any = None) -> Any:
+        if hasattr(obj, key):
+            return getattr(obj, key)
+
+        elif isinstance(obj, abc.Mapping) and key in obj.keys():
+            return obj[key]
+
+        if raise_on_error:
+            raise KeyError("Object of type {} does not have key or attribute {}".format(type(obj), key))
+
+        return default
 
 
 class SizedBox(abc.Sized, Box):
