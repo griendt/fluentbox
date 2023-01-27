@@ -1,4 +1,4 @@
-from .box import (
+from .fluentbox import (
     Box,
     MappingBox,
     MutableMappingBox,

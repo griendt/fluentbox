@@ -190,16 +190,16 @@ class SequenceBox(SizedBox, abc.Sequence):
         super().__init__(items)
 
         if isinstance(items, abc.Sequence):
-            self.items = items
+            self._items = items
 
         else:
-            self.items = [items]
+            self._items = [items]
 
     def _new(self, items: abc.Iterable) -> SequenceBox:
         return cast(SequenceBox, super()._new(items))
 
     def __getitem__(self, index: int | slice) -> Any:
-        return self.items[index]
+        return self._items[index]
 
     def all(self) -> abc.Sequence:
         return self._items
