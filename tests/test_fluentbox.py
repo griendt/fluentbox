@@ -3,7 +3,36 @@ import unittest
 from collections import abc
 from typing import Any, cast
 
-from src.fluentbox import MappingBox, SequenceBox, MutableMappingBox, MutableSetBox
+from src.fluentbox import MappingBox, SequenceBox, MutableMappingBox, MutableSetBox, Box
+
+
+class BoxTest(unittest.TestCase):
+    def test_key_by_string(self) -> None:
+        box = Box([{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}, {"id": 3, "name": "baz"}])
+
+        # .key_by can look inside dictionary keys.
+        # Note that the underlying data type has changed from `list` to `dict`.
+        self.assertEqual({
+            1: {"id": 1, "name": "foo"},
+            2: {"id": 2, "name": "bar"},
+            3: {"id": 3, "name": "baz"}
+        }, box.key_by("id"))
+
+        class Foo:
+            name: str
+
+            def __init__(self, name: str):
+                self.name = name
+
+        foo, bar, baz = Foo("foo"), Foo("bar"), Foo("baz")
+        box = Box([foo, bar, baz])
+
+        # .key_by can look up object attributes as well.
+        self.assertEqual({
+            "foo": foo,
+            "bar": bar,
+            "baz": baz,
+        }, box.key_by("name"))
 
 
 class SequenceBoxTest(unittest.TestCase):
