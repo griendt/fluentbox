@@ -34,6 +34,25 @@ class BoxTest(unittest.TestCase):
             "baz": baz,
         }, box.key_by("name"))
 
+    def test_key_by_callable(self) -> None:
+        box = Box([{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}, {"id": 3, "name": "baz"}])
+
+        def callback(item: dict) -> str:
+            return str(item["name"] + str(item["id"]))
+
+        self.assertEqual({
+            "foo1": {"id": 1, "name": "foo"},
+            "bar2": {"id": 2, "name": "bar"},
+            "baz3": {"id": 3, "name": "baz"},
+        }, box.key_by(callback).all())
+
+    def test_map_and_key_by(self) -> None:
+        box = Box([{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}, {"id": 3, "name": "baz"}])
+
+        # .map_and_key_by keys by the first return value and maps to the second return value.
+        # This is similar to first applying .key_by and then applying .map, but it is done in one pass.
+        self.assertEqual({1: "foo", 2: "bar", 3: "baz"}, box.map_and_key_by(lambda item: (item["id"], item["name"])).all())
+
 
 class SequenceBoxTest(unittest.TestCase):
     def test_all(self) -> None:

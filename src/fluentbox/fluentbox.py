@@ -94,17 +94,26 @@ class Box(abc.Iterable):
     def first_where_or_fail(self, key: str, operation: str | None = None, value: Any = None) -> Any:
         return self.first_where(key, operation, value, or_fail=True)
 
-    def key_by(self, key: str) -> MutableMappingBox:
-        result = {self.__get_attribute_or_key(value, key, raise_on_error=True): value for value in self}
+    def key_by(self, key: str | abc.Callable[[Any], abc.Hashable]) -> MutableMappingBox:
+        if isinstance(key, str):
+            return self.map_and_key_by(lambda value: (self.__get_attribute_or_key(value, cast(str, key), raise_on_error=True), value))
+
+        return self.map_and_key_by(lambda value: (key(value), value))  # type: ignore
+
+    def map(self, callback: abc.Callable) -> Box:
+        return self._new(callback(value) for value in self)
+
+    def map_and_key_by(self, callback: abc.Callable[..., tuple[abc.Hashable, Any]]) -> MutableMappingBox:
+        result = {}
+        for value in self:
+            key, new_value = callback(value)
+            result[key] = new_value
 
         # Preserve MappingBox sub-classing if possible, otherwise, return a fresh MutableMappingBox instance.
         if isinstance(self, MutableMappingBox):
             return cast(MutableMappingBox, self._new(result))
 
         return cast(MutableMappingBox, box(result))
-
-    def map(self, callback: abc.Callable) -> Box:
-        return self._new(callback(value) for value in self)
 
     def merge(self, other: abc.Iterable) -> Box:
         def generator() -> abc.Generator:
