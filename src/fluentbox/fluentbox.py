@@ -343,6 +343,7 @@ class MappingBox(SizedBox, abc.Mapping):
         return cast(MappingBox, self._new({key: value for key, value in self.items() if callback(key, value)}))
 
     def only(self, keys: abc.Iterable[abc.Hashable]) -> MappingBox:
+        # noinspection PyUnusedLocal
         def callback(key: abc.Hashable, value: Any) -> bool:
             return key in keys
 
