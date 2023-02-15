@@ -84,6 +84,7 @@ class Box(abc.Iterable):
         :param chunk_size: The chunk size.
         :return: A new `Box` instance containing the chunked items.
         """
+
         def generator() -> abc.Generator:
             chunk = []
 
@@ -118,7 +119,7 @@ class Box(abc.Iterable):
 
         return self
 
-    def filter(self, callback: abc.Callable[[Any], bool] | None = None) -> Box:
+    def filter(self, callback: abc.Callable[..., bool] | None = None) -> Box:
         """
         Create a new `Box` instance. The items of this new instance are those in this `Box` that pass the test provided by the callback.
         If no callback is provided, each item will be cast to a `bool` as a test instead.
@@ -332,6 +333,14 @@ class MappingBox(SizedBox, abc.Mapping):
 
     def all(self) -> abc.Mapping:
         return self._items
+
+    def filter(self, callback: abc.Callable[[abc.Hashable, Any], bool] | None = None) -> Box:
+        if callback is None:
+            # noinspection PyUnusedLocal
+            def callback(key: abc.Hashable, value: Any) -> bool:
+                return bool(value)
+
+        return self._new({key: value for key, value in self.items() if callback(key, value)})
 
 
 class MutableMappingBox(MappingBox, abc.MutableMapping):
