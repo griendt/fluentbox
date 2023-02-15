@@ -13,6 +13,8 @@ class SizedIterable(abc.Sized, abc.Iterable, Protocol):
 
 
 class Box(abc.Iterable):
+    """Base class for all `Box` types."""
+
     _items: abc.Iterable
     _OPERATOR_MAPPING: dict[str, abc.Callable[[Any, Any], bool]] = {
         "=": operator.eq,
@@ -26,27 +28,62 @@ class Box(abc.Iterable):
     }
 
     def __init__(self, items: abc.Iterable):
+        """
+        Instantiate a new Box. Does not evaluate or exhaust the given iterable.
+
+        :param items: The iterable to collect.
+        """
         if not hasattr(self, "_items"):
             self._items = items
 
     def __bool__(self) -> bool:
+        """
+        Whether the `Box` is considered empty. This is equivalent to whether the underlying items it collects is considered empty.
+
+        :return: Whether the `Box` is considered empty.
+        """
         return bool(self._items)
 
     def __contains__(self, obj: object) -> bool:
+        """
+        Whether the object is contained in this `Box`.
+
+        :param obj: The object to check.
+        :return: Whether the object is in this `Box`.
+        """
         return obj in self._items
 
     def __iter__(self) -> abc.Generator:
+        """Loop over the items this `Box` contains. Yields items one by one."""
         yield from self._items
 
     @final
     @property
     def item_type(self) -> type:
+        """
+        :return: The underlying iterable type that this `Box` wraps around.
+        """
         return type(self._items)
 
     def all(self) -> abc.Iterable:
+        """
+        Get the underlying iterable that this `Box` wraps around, effectively unwrapping.
+        If the underlying iterable is a generator, it will remain one, and it will not be exhausted.
+
+        :return: The underlying iterable object.
+        """
         return self._items
 
     def chunk(self, chunk_size: int) -> Box:
+        """
+        Split the items in chunks (each chunk being a list). Each chunk will have the given size, except for (possibly) the last chunk,
+        which will have a size between 1 and the given chunk size. A new `Box` is returned containing the chunked items.
+
+        Note that if the underlying iterable is a generator, it will be exhausted!
+
+        :param chunk_size: The chunk size.
+        :return: A new `Box` instance containing the chunked items.
+        """
         def generator() -> abc.Generator:
             chunk = []
 
@@ -59,31 +96,76 @@ class Box(abc.Iterable):
         return type(self)(generator())
 
     def diff(self, other: abc.Iterable) -> Box:
+        """
+        Create a new `Box` instance, whose items are the items in this `Box` that are not in the other iterable.
+        If this `Box` has a generator as its underlying iterable, the new `Box` instance will have a generator as its underlying iterable as well;
+        but be aware that exhausting either the original or the resulting generator will also exhaust the other.
+
+        :param other: The other iterable to check against. This may be a `Box` or any other iterable type.
+        :return: A new `Box` containing the items that are not in the other iterable.
+        """
         return self._new(value for value in self if value not in other)
 
-    def each(self, callback: abc.Callable) -> Box:
+    def each(self, callback: abc.Callable[[Any], Any]) -> Box:
+        """
+        Apply the callback to each item. If this `Box` contains a generator, it will be exhausted.
+
+        :param callback: The callback to perform on each item.
+        :return: The original `Box`.
+        """
         for value in self:
             callback(value)
 
         return self
 
-    def filter(self, callback: abc.Callable | None = None) -> Box:
+    def filter(self, callback: abc.Callable[[Any], bool] | None = None) -> Box:
+        """
+        Create a new `Box` instance. The items of this new instance are those in this `Box` that pass the test provided by the callback.
+        If no callback is provided, each item will be cast to a `bool` as a test instead.
+        If this `Box` has a generator as its underlying iterable, the new `Box` instance will have a generator as its underlying iterable as well;
+        but be aware that exhausting either the original or the resulting generator will also exhaust the other.
+
+        :param callback: The test callback.
+        :return: A new `Box` containing the values that pass the test.
+        """
         if callback is None:
             callback = bool
 
         return self._new(value for value in self if callback(value))
 
-    def first(self, or_fail: bool = False) -> Any:
+    def first(self, or_fail: bool = False) -> Any | None:
+        """
+        Get the first item in the `Box`. If the underlying iterable type is not deterministic in its order (e.g. `set`), this method will also not be
+        deterministic. If the underlying iterable is a generator, one value will be yielded, and therefore, subsequent calls to `first` will yield another
+        value. If the `Box` is empty, then `None` is returned instead, unless `or_fail` is set to `True`, in which case an `IndexError` is thrown.
+
+        :param or_fail: Whether to throw an `IndexError` if no item exists.
+        :return: The first element.
+        :throws IndexError: If no element exists and `or_fail` is `True`.
+        """
         for value in self:
             return value
 
         if or_fail:
             raise IndexError
 
+        return None
+
     def first_or_fail(self) -> Any:
         return self.first(or_fail=True)
 
-    def first_where(self, key: str, operation: str | None = None, value: Any = None, /, or_fail: bool = False) -> Any:
+    def first_where(self, key: str, operation: str | None = None, value: Any = None, /, or_fail: bool = False) -> Any | None:
+        """
+        Get the first element that satisfies the condition. If no element could be found and `or_fail` is `True`, an `IndexError` is thrown;
+        if `or_fail` is `False`, `None` will be returned.
+
+        :param key: The attribute or key of the item to evaluate.
+        :param operation: The operation to use when evaluating.
+        :param value: The value to evaluate the item's attribute or key against.
+        :param or_fail: Whether to throw an `IndexError` or not, if no item satisfying the condition could be found.
+        :return: The first item that satisfies the condition.
+        :raises IndexError: When no item could be found that satisfies the condition and `or_fail` is `True`.
+        """
         for item in self:
             if self._where(item, key, operation, value):
                 return item
@@ -91,7 +173,18 @@ class Box(abc.Iterable):
         if or_fail:
             raise IndexError
 
+        return None
+
     def first_where_or_fail(self, key: str, operation: str | None = None, value: Any = None) -> Any:
+        """
+        Get the first element that satisfies the condition. If no such item is found, an `IndexError` is thrown.
+
+        :param key: The attribute or key of the item to evaluate.
+        :param operation: The operation to use when evaluating.
+        :param value: The value to evaluate the item's attribute or key against.
+        :return: The first item that satisfies the condition.
+        :raises IndexError: When no item could be found that satisfies the condition.
+        """
         return self.first_where(key, operation, value, or_fail=True)
 
     def key_by(self, key: str | abc.Callable[[Any], abc.Hashable]) -> MutableMappingBox:
