@@ -5,6 +5,8 @@ import numbers
 import operator
 from typing import final, Any, cast, Protocol, runtime_checkable
 
+from frozendict import frozendict
+
 
 @runtime_checkable
 class SizedIterable(abc.Sized, abc.Iterable, Protocol):
@@ -384,18 +386,18 @@ def box(items: abc.Iterable | None = None) -> Box:
         return box([items])
 
     if isinstance(items, abc.MutableSet):
-        return MutableSetBox(items)
+        return MutableSetBox(set(items))
 
     if isinstance(items, abc.MutableMapping):
-        return MutableMappingBox(items)
+        return MutableMappingBox(dict(items))
 
     if isinstance(items, abc.Mapping):
-        return MappingBox(items)
+        return MappingBox(frozendict(items))  # type: ignore
 
     if isinstance(items, abc.Sequence):
-        return SequenceBox(items)
+        return SequenceBox(list(items))
 
     if isinstance(items, SizedIterable):
-        return SizedBox(items)
+        return SizedBox(list(items))
 
     raise TypeError("Cannot create Box instance from item type {}".format(type(items)))
