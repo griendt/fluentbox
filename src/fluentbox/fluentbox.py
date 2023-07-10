@@ -190,6 +190,27 @@ class Box(abc.Iterable):
         """
         return self.first_where(key, operation, value, or_fail=True)
 
+    def group_by(self, key: str | abc.Callable[[Any], abc.Hashable]) -> MutableMappingBox:
+        result = {}
+
+        callback: abc.Callable[[Any], abc.Hashable]
+        if isinstance(key, str):
+            callback = lambda value: self.__get_attribute_or_key(value, key, raise_on_error=True)
+
+        else:
+            callback = key
+
+        for value in self:
+            result_key = callback(value)
+
+            if result_key in result:
+                result[result_key].append(value)
+
+            else:
+                result[result_key] = [value]
+
+        return cast(MutableMappingBox, box(result))
+
     def key_by(self, key: str | abc.Callable[[Any], abc.Hashable]) -> MutableMappingBox:
         if isinstance(key, str):
             return self.map_and_key_by(lambda value: (self.__get_attribute_or_key(value, cast(str, key), raise_on_error=True), value))
