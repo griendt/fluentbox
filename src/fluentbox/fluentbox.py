@@ -3,22 +3,23 @@ from __future__ import annotations
 import collections.abc as abc
 import numbers
 import operator
+import typing
 from typing import final, Any, cast, Protocol, runtime_checkable
 
 from frozendict import frozendict
 
 
 @runtime_checkable
-class SizedIterable(abc.Sized, abc.Iterable, Protocol):
+class SizedIterable[T](abc.Sized, abc.Iterable[T], Protocol):
     """Intersection type for `abc.Sized` and `abc.Iterable`."""
     pass
 
 
-class Box(abc.Iterable):
+class Box[T](abc.Iterable[T]):
     """Base class for all `Box` types."""
 
-    _items: abc.Iterable
-    _OPERATOR_MAPPING: dict[str, abc.Callable[[Any, Any], bool]] = {
+    _items: abc.Iterable[T]
+    _OPERATOR_MAPPING: dict[str, abc.Callable[[T, Any], bool]] = {
         "=": operator.eq,
         "==": operator.eq,
         "!=": operator.ne,
@@ -29,7 +30,7 @@ class Box(abc.Iterable):
         ">": operator.gt,
     }
 
-    def __init__(self, items: abc.Iterable):
+    def __init__(self, items: abc.Iterable[T]):
         """
         Instantiate a new Box. Does not evaluate or exhaust the given iterable.
 
@@ -46,7 +47,7 @@ class Box(abc.Iterable):
         """
         return bool(self._items)
 
-    def __contains__(self, obj: object) -> bool:
+    def __contains__(self, obj: T) -> bool:
         """
         Whether the object is contained in this `Box`.
 
@@ -55,19 +56,19 @@ class Box(abc.Iterable):
         """
         return obj in self._items
 
-    def __iter__(self) -> abc.Generator:
+    def __iter__(self) -> abc.Generator[T]:
         """Loop over the items this `Box` contains. Yields items one by one."""
         yield from self._items
 
     @final
     @property
-    def item_type(self) -> type:
+    def item_type(self) -> type[T]:
         """
         :return: The underlying iterable type that this `Box` wraps around.
         """
         return type(self._items)
 
-    def all(self) -> abc.Iterable:
+    def all(self) -> abc.Iterable[T]:
         """
         Get the underlying iterable that this `Box` wraps around, effectively unwrapping.
         If the underlying iterable is a generator, it will remain one, and it will not be exhausted.
@@ -76,7 +77,7 @@ class Box(abc.Iterable):
         """
         return self._items
 
-    def chunk(self, chunk_size: int) -> Box:
+    def chunk(self, chunk_size: int) -> Box[list[T]]:
         """
         Split the items in chunks (each chunk being a list). Each chunk will have the given size, except for (possibly) the last chunk,
         which will have a size between 1 and the given chunk size. A new `Box` is returned containing the chunked items.
@@ -87,7 +88,7 @@ class Box(abc.Iterable):
         :return: A new `Box` instance containing the chunked items.
         """
 
-        def generator() -> abc.Generator:
+        def generator() -> abc.Generator[list[T]]:
             chunk = []
 
             for value in self:
@@ -98,7 +99,7 @@ class Box(abc.Iterable):
 
         return type(self)(generator())
 
-    def diff(self, other: abc.Iterable) -> Box:
+    def diff(self, other: abc.Iterable) -> Box[T]:
         """
         Create a new `Box` instance, whose items are the items in this `Box` that are not in the other iterable.
         If this `Box` has a generator as its underlying iterable, the new `Box` instance will have a generator as its underlying iterable as well;
@@ -109,7 +110,7 @@ class Box(abc.Iterable):
         """
         return self._new(value for value in self if value not in other)
 
-    def each(self, callback: abc.Callable[[Any], Any]) -> Box:
+    def each(self, callback: abc.Callable[[T], Any]) -> Box[T]:
         """
         Apply the callback to each item. If this `Box` contains a generator, it will be exhausted.
 
@@ -121,7 +122,7 @@ class Box(abc.Iterable):
 
         return self
 
-    def filter(self, callback: abc.Callable[..., bool] | None = None) -> Box:
+    def filter(self, callback: abc.Callable[[T], bool] | None = None) -> Box:
         """
         Create a new `Box` instance. The items of this new instance are those in this `Box` that pass the test provided by the callback.
         If no callback is provided, each item will be cast to a `bool` as a test instead.
@@ -136,7 +137,7 @@ class Box(abc.Iterable):
 
         return self._new(value for value in self if callback(value))
 
-    def first(self, or_fail: bool = False) -> Any | None:
+    def first(self, or_fail: bool = False) -> T | None:
         """
         Get the first item in the `Box`. If the underlying iterable type is not deterministic in its order (e.g. `set`), this method will also not be
         deterministic. If the underlying iterable is a generator, one value will be yielded, and therefore, subsequent calls to `first` will yield another
@@ -144,7 +145,7 @@ class Box(abc.Iterable):
 
         :param or_fail: Whether to throw an `IndexError` if no item exists.
         :return: The first element.
-        :throws IndexError: If no element exists and `or_fail` is `True`.
+        :throws: `IndexError` if no element exists and `or_fail` is `True`.
         """
         for value in self:
             return value
@@ -154,10 +155,10 @@ class Box(abc.Iterable):
 
         return None
 
-    def first_or_fail(self) -> Any:
+    def first_or_fail(self) -> T:
         return self.first(or_fail=True)
 
-    def first_where(self, key: str, operation: str | None = None, value: Any = None, /, or_fail: bool = False) -> Any | None:
+    def first_where(self, key: abc.Hashable, operation: str | None = None, value: Any = None, /, or_fail: bool = False) -> T | None:
         """
         Get the first element that satisfies the condition. If no element could be found and `or_fail` is `True`, an `IndexError` is thrown;
         if `or_fail` is `False`, `None` will be returned.
@@ -178,7 +179,7 @@ class Box(abc.Iterable):
 
         return None
 
-    def first_where_or_fail(self, key: str, operation: str | None = None, value: Any = None) -> Any:
+    def first_where_or_fail(self, key: abc.Hashable, operation: str | None = None, value: Any = None) -> T:
         """
         Get the first element that satisfies the condition. If no such item is found, an `IndexError` is thrown.
 
@@ -190,12 +191,13 @@ class Box(abc.Iterable):
         """
         return self.first_where(key, operation, value, or_fail=True)
 
-    def group_by(self, key: str | abc.Callable[[Any], abc.Hashable]) -> MutableMappingBox:
+    def group_by[TKey: abc.Hashable](self, key: str | abc.Callable[[T], TKey]) -> MutableMappingBox[TKey, T]:
         result = {}
+        callback: abc.Callable[[T], TKey]
 
-        callback: abc.Callable[[Any], abc.Hashable]
         if isinstance(key, str):
-            callback = lambda value: self.__get_attribute_or_key(value, key, raise_on_error=True)
+            def callback(val):
+                return self.__get_attribute_or_key(val, key, raise_on_error=True)
 
         else:
             callback = key
@@ -209,18 +211,18 @@ class Box(abc.Iterable):
             else:
                 result[result_key] = [value]
 
-        return cast(MutableMappingBox, box(result))
+        return box(result)
 
-    def key_by(self, key: str | abc.Callable[[Any], abc.Hashable]) -> MutableMappingBox:
+    def key_by[TKey: abc.Hashable](self, key: TKey | abc.Callable[[T], TKey]) -> MutableMappingBox[TKey, T]:
         if isinstance(key, str):
             return self.map_and_key_by(lambda value: (self.__get_attribute_or_key(value, cast(str, key), raise_on_error=True), value))
 
-        return self.map_and_key_by(lambda value: (key(value), value))  # type: ignore
+        return self.map_and_key_by(lambda value: (key(value), value))
 
-    def map(self, callback: abc.Callable) -> Box:
+    def map[TMapped](self, callback: abc.Callable[[T], TMapped]) -> Box[TMapped]:
         return self._new(callback(value) for value in self)
 
-    def map_and_key_by(self, callback: abc.Callable[..., tuple[abc.Hashable, Any]]) -> MutableMappingBox:
+    def map_and_key_by[TKey: abc.Hashable, TMapped](self, callback: abc.Callable[[T], tuple[TKey, TMapped]]) -> MutableMappingBox[TKey, TMapped]:
         result = {}
         for value in self:
             key, new_value = callback(value)
@@ -228,22 +230,22 @@ class Box(abc.Iterable):
 
         # Preserve MappingBox sub-classing if possible, otherwise, return a fresh MutableMappingBox instance.
         if isinstance(self, MutableMappingBox):
-            return cast(MutableMappingBox, self._new(result))
+            return self._new(result)
 
-        return cast(MutableMappingBox, box(result))
+        return box(result)
 
-    def merge(self, other: abc.Iterable) -> Box:
+    def merge[T2](self, other: abc.Iterable[T2]) -> Box[T | T2]:
         def generator() -> abc.Generator:
             yield from self
             yield from other
 
         return self._new(generator())
 
-    def pluck(self, key: str, *, default: Any = None, raise_on_error: bool = False) -> Box:
+    def pluck[TDefault](self, key: abc.Hashable, *, default: TDefault = None, raise_on_error: bool = False) -> Box[T | TDefault]:
         return self.map(lambda item: self.__get_attribute_or_key(item, key, raise_on_error=raise_on_error, default=default))
 
-    def reduce(self, callback: abc.Callable, initial_value: Any = None) -> Any:
-        result = initial_value
+    def reduce[TInitial, T2](self, callback: abc.Callable[[T | TInitial, T], T2], initial_value: TInitial = None) -> T2:
+        result: TInitial | T | T2 = initial_value
         is_first_iteration = True
 
         for value in self:
@@ -259,8 +261,16 @@ class Box(abc.Iterable):
     def sum(self) -> Any:
         return self.reduce(lambda x, y: x + y)
 
-    def _new(self, items: abc.Iterable) -> Box:
+    def _new[TValue](self, items: abc.Iterable[TValue]) -> typing.Self:
         return type(self)(self.item_type(items))
+
+    @typing.overload
+    def _where[TKey: abc.Hashable, TValue](self, obj: abc.Mapping[TKey, TValue], key: TKey, operation: str | None = None, value: Any = None) -> bool:
+        ...
+
+    @typing.overload
+    def _where(self, obj: object, key: str, operation: str | None = None, value: Any = None) -> bool:
+        ...
 
     @final
     def _where(self, obj: object, key: str, operation: str | None = None, value: Any = None) -> bool:
@@ -282,11 +292,21 @@ class Box(abc.Iterable):
 
         return self._OPERATOR_MAPPING[operation](obj, value)
 
-    def where(self, key: str, operation: str | None = None, value: Any = None) -> Box:
+    def where(self, key: abc.Hashable, operation: str | None = None, value: Any = None) -> Box[T]:
         return self.filter(lambda obj: self._where(obj, key, operation, value))
 
-    def zip(self, other: abc.Iterable) -> Box:
+    def zip[T2](self, other: abc.Iterable[T2]) -> Box[tuple[T, T2]]:
         return self._new(zip(self, other))
+
+    @staticmethod
+    @typing.overload
+    def __get_attribute_or_key[TKey: abc.Hashable, TValue, TDefault](obj: abc.Mapping[TKey, TValue], key: TKey, *, raise_on_error: bool = False, default: TDefault = None) -> TValue | TDefault:
+        ...
+
+    @staticmethod
+    @typing.overload
+    def __get_attribute_or_key(obj: object, key: str, *, raise_on_error: bool = False, default: Any = None) -> Any:
+        ...
 
     @staticmethod
     def __get_attribute_or_key(obj: object, key: str, *, raise_on_error: bool = False, default: Any = None) -> Any:
@@ -302,10 +322,10 @@ class Box(abc.Iterable):
         return default
 
 
-class SizedBox(abc.Sized, Box):
-    _items: SizedIterable
+class SizedBox[T](abc.Sized, Box):
+    _items: SizedIterable[T]
 
-    def all(self) -> SizedIterable:
+    def all(self) -> SizedIterable[T]:
         return self._items
 
     def __len__(self) -> int:
@@ -319,10 +339,10 @@ class SizedBox(abc.Sized, Box):
         return the_sum / len(self)
 
 
-class SequenceBox(SizedBox, abc.Sequence):
+class SequenceBox[T](SizedBox, abc.Sequence[T]):
     _items: abc.Sequence
 
-    def __init__(self, items: Any):
+    def __init__(self, items: T | abc.Sequence[T]):
         super().__init__(items)
 
         if isinstance(items, abc.Sequence):
@@ -331,36 +351,44 @@ class SequenceBox(SizedBox, abc.Sequence):
         else:
             self._items = [items]
 
-    def _new(self, items: abc.Iterable) -> SequenceBox:
+    def _new(self, items: abc.Iterable[T]) -> SequenceBox[T]:
         return cast(SequenceBox, super()._new(items))
 
-    def __getitem__(self, index: int | slice) -> Any:
+    @typing.overload
+    def __getitem__(self, index: int) -> T:
+        ...
+
+    @typing.overload
+    def __getitem__(self, index: slice) -> slice:
+        ...
+
+    def __getitem__(self, index: T | slice) -> T | slice:
         return self._items[index]
 
-    def all(self) -> abc.Sequence:
+    def all(self) -> abc.Sequence[T]:
         return self._items
 
-    def chunk(self, chunk_size: int) -> SequenceBox:
+    def chunk(self, chunk_size: int) -> SequenceBox[abc.Iterable[T]]:
         # Using slices is more efficient than using the for-loop implementation in `Box`.
         return self._new(self[i: i + chunk_size] for i in range(0, len(self), chunk_size))
 
-    def reverse(self) -> SequenceBox:
+    def reverse(self) -> SequenceBox[T]:
         return self._new(reversed(self))
 
 
-class MappingBox(SizedBox, abc.Mapping):
+class MappingBox[TKey: abc.Hashable, TValue](SizedBox, abc.Mapping[TKey, TValue]):
     _items: abc.Mapping
 
-    def __getitem__(self, key: abc.Hashable) -> Any:
+    def __getitem__(self, key: TKey) -> TValue:
         return self._items[key]
 
-    def all(self) -> abc.Mapping:
+    def all(self) -> abc.Mapping[TKey, TValue]:
         return self._items
 
-    def filter(self, callback: abc.Callable[[abc.Hashable, Any], bool] | None = None) -> MappingBox:
+    def filter(self, callback: abc.Callable[[TKey, TValue], bool] | None = None) -> MappingBox[TKey, TValue]:
         if callback is None:
             # noinspection PyUnusedLocal
-            def callback(key: abc.Hashable, value: Any) -> bool:
+            def callback(key: TKey, value: TValue) -> bool:
                 return bool(value)
 
         return cast(MappingBox, self._new({key: value for key, value in self.items() if callback(key, value)}))
@@ -373,33 +401,63 @@ class MappingBox(SizedBox, abc.Mapping):
         return self.filter(callback)
 
 
-class MutableMappingBox(MappingBox, abc.MutableMapping):
+class MutableMappingBox[TKey: abc.Hashable, TValue](MappingBox[TKey, TValue], abc.MutableMapping[TKey, TValue]):
     _items: abc.MutableMapping
 
-    def __setitem__(self, key: abc.Hashable, value: Any) -> None:
+    def __setitem__(self, key: TKey, value: TValue) -> None:
         self._items[key] = value
 
-    def __delitem__(self, key: abc.Hashable) -> None:
+    def __delitem__(self, key: TKey) -> None:
         del self._items[key]
 
-    def all(self) -> abc.MutableMapping:
+    def all(self) -> abc.MutableMapping[TKey, TValue]:
         return self._items
 
 
-class MutableSetBox(SizedBox, abc.MutableSet):
+class MutableSetBox[TValue](SizedBox, abc.MutableSet, set):
     _items: abc.MutableSet
 
-    def all(self) -> abc.MutableSet:
+    def all(self) -> abc.MutableSet[TValue]:
         return self._items
 
-    def add(self, value: Any) -> None:
+    def add(self, value: TValue) -> None:
         self._items.add(value)
 
-    def discard(self, value: Any) -> None:
+    def discard(self, value: TValue) -> None:
         self._items.discard(value)
 
 
-def box(items: abc.Iterable | None = None) -> Box:
+@typing.overload
+def box(items: None) -> SequenceBox[list]:
+    ...
+
+
+@typing.overload
+def box[T: abc.Hashable](items: abc.MutableSet[T]) -> MutableSetBox[T]:
+    ...
+
+
+@typing.overload
+def box[TKey: abc.Hashable, TValue](items: abc.MutableMapping[TKey, TValue]) -> MutableMappingBox[TKey, TValue]:
+    ...
+
+
+@typing.overload
+def box[TKey: abc.Hashable, TValue](items: abc.Mapping[TKey, TValue]) -> MappingBox[TKey, TValue]:
+    ...
+
+
+@typing.overload
+def box[T](items: abc.Sequence[T]) -> SequenceBox[T]:
+    ...
+
+
+@typing.overload
+def box[T](items: SizedIterable[T]) -> SizedBox[T]:
+    ...
+
+
+def box(items=None):
     if items is None:
         return box([])
 
