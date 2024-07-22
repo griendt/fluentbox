@@ -191,7 +191,7 @@ class Box[T](abc.Iterable[T]):
         """
         return self.first_where(key, operation, value, or_fail=True)
 
-    def group_by[TKey: abc.Hashable](self, key: str | abc.Callable[[T], TKey]) -> MutableMappingBox[TKey, T]:
+    def group_by[TKey: abc.Hashable](self, key: str | abc.Callable[[T], TKey]) -> MutableMappingBox[TKey, list[T]]:
         result = {}
         callback: abc.Callable[[T], TKey]
 
@@ -240,6 +240,9 @@ class Box[T](abc.Iterable[T]):
             yield from other
 
         return self._new(generator())
+
+    def pipe_into[T2](self, callback: type[T2] | typing.Callable[[typing.Self], T2]) -> T2:
+        return callback(self)
 
     def pluck[TDefault](self, key: abc.Hashable, *, default: TDefault = None, raise_on_error: bool = False) -> Box[T | TDefault]:
         return self.map(lambda item: self.__get_attribute_or_key(item, key, raise_on_error=raise_on_error, default=default))
@@ -480,3 +483,9 @@ def box(items=None):
         return SizedBox(list(items))
 
     raise TypeError("Cannot create Box instance from item type {}".format(type(items)))
+
+
+if __name__ == "__main__":
+    bx = box({1: 2, 3: 4, 5: 6})
+
+    by = bx.pipe_into(set)
