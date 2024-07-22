@@ -192,7 +192,7 @@ class Box[T](abc.Iterable[T]):
         return self.first_where(key, operation, value, or_fail=True)
 
     def group_by[TKey: abc.Hashable](self, key: str | abc.Callable[[T], TKey]) -> MutableMappingBox[TKey, list[T]]:
-        result = {}
+        result: dict[TKey, list[T]] = {}
         callback: abc.Callable[[T], TKey]
 
         if isinstance(key, str):
